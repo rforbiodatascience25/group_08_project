@@ -1,0 +1,16 @@
+---
+title: "Group08 - 04_describe"
+author: "Eleni"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}   library("tidyverse")}
+```
+
+## Load data
+
+```{r}
+```

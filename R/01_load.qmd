@@ -1,0 +1,18 @@
+---
+title: "Group08 - 01_load"
+author: "Eleni"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+```
+
+## Load data
+
+```{r}
+
+```

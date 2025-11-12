@@ -1,0 +1,17 @@
+---
+title: "Group08 - 02_clean"
+author: "Eleni"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+```
+
+## Load data
+
+```{r}
+```

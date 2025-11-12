@@ -1,0 +1,18 @@
+---
+title: "Group08 - 05_analysis_3"
+subtitle: "PCA plot"
+author: "Greta"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+```
+
+## Load data
+
+```{r}
+```

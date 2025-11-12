@@ -1,0 +1,16 @@
+---
+title: "Group08 - 99_proj_func"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+```
+
+## Load data
+
+```{r}
+```
