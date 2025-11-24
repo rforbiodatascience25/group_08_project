@@ -1,0 +1,220 @@
+---
+title: "Group08 - 05_analysis_3"
+subtitle: "lm() via broom"
+author: "Dana"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+library("purrr")
+library("broom")
+```
+
+## Load data
+
+```{r}
+data <- read_csv("../_raw/data/clean_sample_expression.csv")
+```
+
+## Small test - applying linear model to one gene
+
+```{r}
+model <- data |> 
+  lm(formula = `244901_at` ~ condition,
+     data = _)
+print("lm() output:")
+model |>
+  pluck("coefficients")
+
+
+print("summary() output:")
+model |>
+  summary()
+
+```
+
+Since P-value is \<2e-16, there is a statistically significant difference in 244901_at expression between normal and stress conditions.
+
+```{r}
+ggplot(data, aes(x = condition, y = `244901_at`, fill = condition)) +
+  geom_boxplot() +
+  labs(
+    title = paste("Expression of 244901_at by condition"),
+    x = "Condition",
+    y = "log2(Expression +1)"
+  ) 
+
+data |>
+  group_by(condition) |>
+  summarise(mu = mean(`244901_at`))
+```
+
+Boxplot shows that mean for stress is higher, thus 244901_at is upregulated when the plant is stressed.
+
+## Create long dataframe
+
+```{r}
+data_long <- data |>
+  pivot_longer(cols = ends_with("at"),
+               names_to = "gene",
+               values_to = "log2_expr_level")
+data_long
+```
+
+## Create nested dataframe
+
+```{r}
+nested_data <- data_long |>
+  group_by(gene) |>
+  nest() |> 
+  ungroup()
+nested_data
+
+```
+
+```{r}
+# check
+nested_data |>
+  filter(gene == "244901_at") |> 
+  pull(data)
+```
+
+## Apply model_object to nested data
+
+```{r}
+# can take a few mins to run
+nested_data <- nested_data |> 
+  group_by(gene) |> 
+  mutate(model_object = map(.x = data,
+                   .f = ~lm(formula = log2_expr_level ~ condition,
+                            data = .x)))
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "244901_at") |> 
+  pull(model_object)
+```
+
+```{r}
+# tidy using broom
+nested_data <- nested_data |> 
+  mutate(model_object_tidy = map(.x = model_object,
+                                 .f = ~tidy(x = .x,
+                                            conf.int = TRUE,
+                                            conf.level = 0.95)))
+
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "244901_at") |> 
+  pull(model_object_tidy)
+```
+
+```{r}
+# unpack the nested models
+data_estimates <- nested_data |>
+  unnest(model_object_tidy) |> 
+  filter(term == "conditionstress") |> 
+  select(gene, p.value, estimate, conf.low, conf.high) |> 
+  ungroup()
+data_estimates
+```
+
+```{r}
+# add q value
+data_estimates <- data_estimates |>
+  mutate(q.value = p.adjust(p.value),
+         is_significant = case_when(q.value <= 0.05 ~ "yes",
+                                    q.value > 0.05 ~ "no"))
+data_estimates
+```
+
+## Select statistically significant genes
+
+```{r}
+data_estimates |>
+  filter(is_significant == "yes") |> 
+  select(gene, p.value, q.value)
+```
+
+## Forest plot
+
+```{r}
+forest_plot_364 <- data_estimates |> 
+  filter(is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates across normal and stressed condtions")
+forest_plot_364
+```
+
+Too many genes!
+
+```{r}
+# instead of plotting q value <0.05, check 0.01:
+forest_plot_q_value <- data_estimates |>
+  filter(q.value < 0.01 & is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates across normal and stressed condtions")
+forest_plot_q_value
+```
+
+Still too big, there are 230 rows!
+
+```{r}
+# choose top 20 by absolute effect size
+topN <- 20
+
+forest_plot_top20 <- data_estimates %>%
+  filter(is_significant == "yes") %>%
+  slice_max(order_by = abs(estimate), n = topN) %>%
+  ggplot(aes(
+    x = estimate,
+    y = fct_reorder(gene, estimate),
+    xmin = conf.low,
+    xmax = conf.high
+  )) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  labs(
+    x = "Estimates (95% CIs)",
+    y = "",
+    title = paste0("Top ", topN, " genes (significant)")
+  )
+
+forest_plot_top20
+
+```
+
+The strongest significant genes are all upregulated in the stress condition.
