@@ -5,13 +5,13 @@ format: html
 editor: visual
 ---
 
-## Load packages
+## 1. Load packages
 
 ```{r}
 library("tidyverse")
 ```
 
-## Load the two GEO expression datasets
+## 2. Load the two GEO expression datasets
 
 ```{r}
 # Read the first GEO series matrix (GSE5620)
@@ -21,7 +21,7 @@ library("tidyverse")
 # - sep = "\t" because GEO matrices are tab-separated
 
 gse5620 <- read.delim(
-  "../_raw/data/GSE5620_series_matrix.txt.gz", # remember to use relative paths, not your local path
+  "../_raw/data/GSE5620_series_matrix.txt.gz",
   header = TRUE,
   sep = "\t",
   comment.char = "!",
@@ -29,7 +29,7 @@ gse5620 <- read.delim(
 )
 
 gse5621 <- read.delim(
-  "../_raw/data/GSE5621_series_matrix.txt.gz", # remember to use relative paths, not your local path
+  "../_raw/data/GSE5621_series_matrix.txt.gz",
   header = TRUE,
   sep = "\t",
   comment.char = "!",
@@ -37,7 +37,7 @@ gse5621 <- read.delim(
 )
 ```
 
-## 2. Create condition labels for each dataset and combine them in the same order as columns
+## 3. Create condition labels for each dataset and combine athem in the same order as columns
 
 ```{r}
 # GSE5620 = "normal" samples
@@ -54,7 +54,7 @@ cond_5621 <- rep("stress", ncol(gse5621))
 conditions <- c(cond_5620, cond_5621)
 ```
 
-## 3. Combine both expression matrices side-by-side
+## 4. Combine both expression matrices side-by-side
 
 ```{r}
 # Both datasets have the same genes in the same order.
@@ -87,7 +87,6 @@ final_data <- combined_expr %>%
   rownames_to_column("sample") %>% # add sample name column 
   mutate(condition = conditions) %>% # add normal/stress label 
   relocate(sample, condition) # move sample + condition to the front
-
 ```
 
 ## 6. Convert all gene columns to numeric
@@ -115,7 +114,7 @@ clean_data <- final_data_numeric %>%
 ## 8. Save the final tidy dataset as ONE CSV file
 
 ```{r}
-# final_sample_expression.csv contains:
+# clean_sample_expression.csv contains:
 # one row per sample
 # gene expression values (many columns)
 # condition column
@@ -127,10 +126,9 @@ clean_data <- final_data_numeric %>%
 
 write.csv(
   clean_data,
-  "../_raw/data/clean_sample_expression.csv", # remember to save the data in appropriate folder (data for now, since results will be html files)
+  "clean_sample_expression.csv",
   row.names = FALSE
 )
-
 ```
 
 ## Test1: expression of one gene by condition
@@ -144,7 +142,7 @@ ggplot(clean_data, aes(x = condition, y = .data[[gene]], fill = condition)) +
     title = paste("Expression of", gene, "by condition"),
     x = "Condition",
     y = "log2(Expression +1)"
-  ) 
+  )
 ```
 
 ## Test2: density of all genes by condition
