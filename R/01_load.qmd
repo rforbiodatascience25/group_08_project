@@ -81,11 +81,11 @@ combined_expr <- cbind(gse5620, gse5621)
 # Add condition labels.
 # Move label columns to the front for readability.
 
-final_data <- combined_expr %>%
-  t() %>% # transpose → samples (rows) × genes (columns) 
-  as.data.frame() %>% # convert matrix → data frame 
-  rownames_to_column("sample") %>% # add sample name column 
-  mutate(condition = conditions) %>% # add normal/stress label 
+final_data <- combined_expr |>
+  t() |> # transpose → samples (rows) × genes (columns) 
+  as.data.frame() |> # convert matrix → data frame 
+  rownames_to_column("sample") |> # add sample name column 
+  mutate(condition = conditions) |> # add normal/stress label 
   relocate(sample, condition) # move sample + condition to the front
 ```
 
@@ -96,7 +96,7 @@ final_data <- combined_expr %>%
 # If any column contains non-numeric entries (e.g. "NA", " ", "."), R will warn: "NAs introduced by coercion"
 # This is a quality-control check
 
-final_data_numeric <- final_data %>%
+final_data_numeric <- final_data |>
   mutate(across(-c(sample, condition), ~ as.numeric(.x)))
 ```
 
@@ -107,7 +107,7 @@ final_data_numeric <- final_data %>%
 # Log2 transformation compresses this range 
 # This step prepares the data for PCA, clustering, and all downstream analyses.
 
-clean_data <- final_data_numeric %>%
+clean_data <- final_data_numeric |>
   mutate(across(-c(sample, condition), ~ log2(.x + 1)))
 ```
 
@@ -148,7 +148,7 @@ ggplot(clean_data, aes(x = condition, y = .data[[gene]], fill = condition)) +
 ## Test2: density of all genes by condition
 
 ```{r}
-clean_data_long <- clean_data %>%
+clean_data_long <- clean_data |>
   pivot_longer(
     cols = -c(sample, condition),
     names_to = "gene",
