@@ -252,7 +252,7 @@ write_csv(expr_filtered, "_processed/expression_filtered_normalized.csv")
 
 ```
 
-## 10. Merge normalized expression with metadata 
+## 10. Merge normalized expression with metadata
 
 ```{r}
 # 1. Load expression + metadata
@@ -307,7 +307,7 @@ expr_with_meta <- expr_with_meta |>
   )
 
 # 6. Save final dataset
-# This file includes: GSM + metadata + log2-normalized gene expression.
+# This file includes: GSM + metadata + log2-normalized gene expression
 write_csv(expr_with_meta, "_processed/expression_with_metadata.csv")
 
 ```
