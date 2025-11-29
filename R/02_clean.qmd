@@ -1,17 +1,76 @@
 ---
-title: "Group08 - 02_clean"
+title: "02_clean"
 author: "Eleni"
-format: html
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## Load packages
+## 0. Load packages
 
 ```{r}
 library("tidyverse")
+library(janitor)
 ```
 
-## Load data
+## 1. Load data produced in 01_load
 
 ```{r}
+sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
+expr_annotated  <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+```
+
+## 2. Filter Uninformative Genes
+
+```{r}
+# a. Remove Affymetrix control probes (start with "AFFX")
+# These are technical control probes and do not represent real genes.
+expr_filtered <- expr_annotated |>
+  filter(!grepl("^AFFX", probeid))
+
+# b. Remove probes without a valid gene symbol 
+# Probes with no gene symbol cannot be interpreted biologically.
+expr_filtered <- expr_filtered |>
+  filter(!is.na(symbol) & symbol != "")
+```
+
+## 3. Log2 transform expression
+
+```{r}
+# Identify expression columns (all GSM samples)
+gsm_cols <- grepl("^GSM", names(expr_filtered))
+
+# Log2 transform IN PLACE: expr_filtered is now log2-normalised
+expr_filtered[ , gsm_cols] <- log2(expr_filtered[ , gsm_cols] + 1)
+
+# Numeric matrix of expression only
+expr_numeric <- expr_filtered[ , gsm_cols]
+```
+
+## 4. Remove low-variance genes
+
+```{r}
+# Remove low-variance genes (bottom 20%)
+# Genes with very little variation across samples are uninformative and add noise.
+gene_variance <- apply(expr_numeric, 1, var)
+
+# Cutoff at 20th percentile
+variance_cutoff <- quantile(gene_variance, 0.20)
+
+# Keep only genes with variance above cutoff
+expr_filtered <- expr_filtered[gene_variance > variance_cutoff, ]
+```
+
+## 5. Save cleaned + normalized expression matrix
+
+```{r}
+# This dataset contains only informative genes:
+#   - no control probes (AFFX)
+#   - no unannotated probes
+#   - only genes with meaningful variation across samples
+#   -log2 normalized values
+# This is the dataset that should be used for all downstream analyses:
+
+readr::write_tsv(expr_filtered, "../_raw/data/expression_filtered_normalized.tsv")
 ```

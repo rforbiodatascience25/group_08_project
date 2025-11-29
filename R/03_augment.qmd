@@ -1,17 +1,126 @@
 ---
-title: "Group08 - 03_augment"
+title: "03_augment"
 author: "Eleni"
-format: html
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## Load packages
+## 0. Load packages
 
 ```{r}
 library("tidyverse")
 ```
 
-## Load data
+## 1. Load cleaned data
 
 ```{r}
+expr_filtered <- readr::read_tsv("../_raw/data/expression_filtered_normalized.tsv")
+sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
+```
+
+## 2. Extract expression matrix
+
+```{r}
+# Keep only GSM expression columns i.e. the actual sample-level expression values for each sample.
+expr_only <- expr |> 
+  dplyr::select(starts_with("GSM"))
+
+# The same gene symbol can appear multiple times because multiple probes may map to the same gene. make.unique() adds suffixes (".1", ".2", etc.) to ensure row names are unique and valid for downstream analyses.
+safe_symbols <- make.unique(expr$symbol)
+
+# Assign the unique gene symbols as row names of the expression matrix.
+rownames(expr_only) <- safe_symbols
+```
+
+## 3. Transpose: samples in rows
+
+```{r}
+# Transpose the matrix so that:
+# - rows become samples (GSM IDs)
+# - columns become genes (unique gene symbols)
+# This format is required for merging metadata (which is per sample).
+expr_t <- t(expr_only)
+
+# Convert the transposed matrix into a data frame for tidyverse compatibility.
+expr_t <- as.data.frame(expr_t)
+
+# After transposing, the original rownames contain the GSM IDs.
+# Add them back as a proper column so we can merge with metadata.
+expr_t$GSM <- rownames(expr_t)
+```
+
+## 4. Merge metadata
+
+```{r}
+# Join the expression table (samples as rows) with the sample metadata table.
+# The merge is performed on the GSM sample ID.
+expr_with_meta <- dplyr::left_join(expr_t, meta, by = "GSM")
+```
+
+## 5. Add averaged replicate values
+
+```{r}
+# a. Meta columns (do not average)
+# These are descriptive fields that define the experimental grouping.
+metadata_cols <- c("GSM", "title", "condition", "tissue", "timepoint", "replicate")
+
+# b. Gene columns = everything not metadata
+# These contain actual gene expression values.
+gene_cols <- setdiff(names(expr_with_meta), metadata_cols)
+
+# c. Group columns
+# Averaging is performed across replicates that share:
+# - same condition (cold/control)
+# - same tissue (roots/shoots)
+# - same timepoint (0.5h, 6h, etc.)
+group_cols <- c("condition", "tissue", "timepoint")
+
+# d. Compute averages
+# aggregate() groups the samples by the variables above and takes the
+# mean expression per gene within each group.
+avg_values <- aggregate(
+  expr_with_meta[ , gene_cols, drop = FALSE],
+  by = expr_with_meta[ , group_cols, drop = FALSE],
+  FUN = function(x) mean(x, na.rm = TRUE)
+)
+
+# e. Rename avg columns
+# Prefix averaged columns with "avg_" to make it clear they represent
+# group-level averages, not raw sample values.
+names(avg_values)[ -(1:length(group_cols)) ] <-
+  paste0("avg_", names(avg_values)[ -(1:length(group_cols)) ])
+
+# f. Merge averages back in
+# Add the averaged values to the full dataset for each sample.
+expr_with_meta <- merge(
+  expr_with_meta,
+  avg_values,
+  by = group_cols,
+  all.x = TRUE
+)
+```
+
+## 6. Reorder columns
+
+```{r}
+# Reorder the final dataset so metadata columns appear first,
+# followed by gene expression values and averaged values.
+expr_with_meta <- expr_with_meta |>
+  dplyr::select(
+    GSM,
+    title,
+    condition,
+    tissue,
+    timepoint,
+    replicate,
+    dplyr::everything()
+  )
+```
+
+## 7. Save final dataset
+
+```{r}
+readr::write_tsv(expr_with_meta, "../_raw/data/expression_with_metadata.tsv")
 ```
