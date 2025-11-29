@@ -11,7 +11,7 @@ editor: visual
 
 # Install required packages only if missing
 if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+    install.packages("BiocManager") # has this been requested via course's slack
 
 required <- c("tidyverse", "stringr", "janitor", 
               "AnnotationDbi", "ath1121501.db")
