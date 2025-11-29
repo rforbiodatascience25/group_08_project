@@ -193,7 +193,7 @@ expr_annotated <- dplyr::left_join(
 # This serves as a complete reference version of the dataset.
 # The filtered version (created in Step 8) will be used for downstream analysis (PCA, differential expression, clustering, heatmaps, etc.).
 
-write_csv(expr_annotated, "_processed/expression_annotated.csv")
+write_csv(expr_annotated, "../_raw/_processed/expression_annotated.csv")
 ```
 
 ## 8. Filter Uninformative Genes
@@ -247,7 +247,7 @@ expr_filtered <- expr_filtered[gene_variance > variance_cutoff, ]
 # This is the dataset that should be used for all downstream analyses:
 
 
-write_csv(expr_filtered, "_processed/expression_filtered_normalized.csv")
+write_csv(expr_filtered, "../_raw/_processed/expression_filtered_normalized.csv")
 
 ```
 
@@ -336,9 +336,9 @@ expr_with_meta <- expr_with_meta |>
     dplyr::everything()   # then all gene expression columns
   )
 
-# 6. Save final dataset
+# 6. Save final dataset.
 # This file includes: GSM + metadata + log2-normalized gene expression.
 
-write_csv(expr_with_meta, "_processed/expression_with_metadata.csv")
+write_csv(expr_with_meta, "../_raw/_processed/expression_with_metadata.csv")
 
 ```
