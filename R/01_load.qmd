@@ -1,7 +1,9 @@
 ---
-title: "01_load_new"
+title: "01_load"
 author: "Eleni"
-format: html
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
