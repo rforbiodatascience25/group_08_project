@@ -27,6 +27,16 @@ data$timepoint <- factor(
              "3.0h", "4.0h", "6.0h", 
              "12.0h", "24.0h")
 )
+
+data$condition <- factor(
+  data$condition,
+  levels = c("control", "cold")
+)
+
+data$tissue <- factor(
+  data$tissue,
+  levels = c("Shoots", "Roots")
+)
 ```
 
 ## Small test - applying linear model to one gene
@@ -57,7 +67,7 @@ ggplot(small_test_ORF25_shoots, aes(y = ORF25, x = timepoint, color = condition)
 ```
 
 ```{r}
-# lm model
+# lm model for control shoots data only
 model_lm <- small_test_ORF25_shoots_control |>
   group_by(condition, tissue, timepoint) |>
   lm(formula = ORF25 ~ timepoint,
@@ -73,22 +83,34 @@ model_lm |>
 
 ```
 
-Since P-value is \<2e-16, there is a statistically significant difference in 244901_at expression between normal and stress conditions.
+Since P-value is \<2e-16, there is a statistically significant difference in ORF25 expression between 0 hrs and all the rest timepoints for control shoots. 0.25 hrs and 24 hrs data is not statistically significantly different from 0 hrs, which biologically makes sense since those are nearly the same times in the day. Gene expression decreases until 6 hrs and then goes up again.
 
 ```{r}
-# aov model
-model_aov <- small_test_ORF25_shoots_control |>
+# lm for ORF25 expression explained by condition, tissue type and timepoint
+model_ORF25 <- data |>
   group_by(condition, tissue, timepoint) |>
-  aov(formula = ORF25 ~ timepoint,
-     data = _)
-print("aov() output:")
-model_aov
+  lm(ORF25 ~ condition * tissue * timepoint, data = _)
+print("lm() output:")
+model_ORF25 |>
+  pluck("coefficients")
 
 
 print("summary() output:")
-model_aov |>
+model_ORF25 |>
   summary()
 ```
+
+At intercept, i.e. control, shoots at 0 hrs, ORF25 expression is statistically significantly different from 0.
+
+cold
+
+tissue
+
+two way
+
+three way
+
+Some parts of the 3-way interaction cannot be estimated; the model is over-parameterised. Only main effects are seen
 
 ## Create long dataframe
 
