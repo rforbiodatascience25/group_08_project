@@ -17,100 +17,96 @@ library("broom")
 ## Load data
 
 ```{r}
-data <- read_csv("_processed/expression_with_metadata.csv")
+data <- read_tsv("../_raw/data/expression_with_metadata.tsv")
+expr_annotated <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+```
+
+## Prepare the data
+
+```{r}
+# set to factors and set levels in the preferred order
+data$gene <- as.factor(data$gene)
+data$condition <- factor(data$condition,
+                         levels = c("control", "cold"))
+data$tissue <- factor(data$tissue,
+                      levels = c("Roots", "Shoots"))
+data$timepoint <- factor(data$timepoint,
+                            levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h", 
+                                       "4.0h","6.0h", "12.0h", "24.0h"))
+data$replicate <- as.factor(data$replicate)
+
+# remove h in timepoints and convert to numeric
+small_test_ATSRC2$time <- as.numeric(sub("h", "", small_test_ATSRC2$timepoint))
+
+```
+
+## Small test - applying linear model to one gene (e.g. (AT)SRC2)
+
+### Get the data for (AT)SRC2 only
+
+```{r}
+small_test_ATSRC2 <- data |>  
+  filter(gene == "(AT)SRC2")
+small_test_ATSRC2
+```
+
+### Plot ATSRC2 
+
+```{r}
+ggplot(small_test_ATSRC2, aes(x = time,
+                         y = expression,
+                         color = condition)) +
+  geom_point() + 
+  geom_line(aes(y = average)) +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 between both conditions, in both tissues") +
+  ylab("Log10 expression")
 ```
 
 ```{r}
-data$timepoint <- factor(
-  data$timepoint,
-  levels = c("0h", "0.25h", "0.5h", "1.0h",
-             "3.0h", "4.0h", "6.0h", 
-             "12.0h", "24.0h")
-)
-
-data$condition <- factor(
-  data$condition,
-  levels = c("control", "cold")
-)
-
-data$tissue <- factor(
-  data$tissue,
-  levels = c("Shoots", "Roots")
-)
-```
-
-## Small test - applying linear model to one gene
-
-```{r}
-gene = 'ORF25'
-
-small_test_ORF25 <- data |> 
-  dplyr::select(condition, tissue, timepoint, ORF25, replicate)
-small_test_ORF25
-
-small_test_ORF25_shoots <- small_test_ORF25 |>
-  filter(tissue == 'Shoots')
-small_test_ORF25_shoots
-
-small_test_ORF25_shoots_control <- small_test_ORF25_shoots |>
-  filter(condition == "control")
-small_test_ORF25_shoots_control
-
-small_test_ORF25_shoots_cold <- small_test_ORF25_shoots |>
-  filter(condition == "cold")
-small_test_ORF25_shoots_cold
-```
-
-```{r}
-ggplot(small_test_ORF25_shoots, aes(y = ORF25, x = timepoint, color = condition)) +
-  geom_point()
-```
-
-```{r}
-# lm model for control shoots data only
-model_lm <- small_test_ORF25_shoots_control |>
+# lm for ATSRC2 expression explained by condition, tissue type and timepoint
+model_ATSRC2 <- small_test_ATSRC2 |>
   group_by(condition, tissue, timepoint) |>
-  lm(formula = ORF25 ~ timepoint,
-     data = _)
+  lm(expression ~ condition * tissue * timepoint, data = _)
 print("lm() output:")
-model_lm |>
+model_ATSRC2 |>
   pluck("coefficients")
 
 
 print("summary() output:")
-model_lm |>
+model_ATSRC2 |>
   summary()
-
 ```
 
-Since P-value is \<2e-16, there is a statistically significant difference in ORF25 expression between 0 hrs and all the rest timepoints for control shoots. 0.25 hrs and 24 hrs data is not statistically significantly different from 0 hrs, which biologically makes sense since those are nearly the same times in the day. Gene expression decreases until 6 hrs and then goes up again.
+At intercept, i.e. control, roots at 0 hrs, (AT)SRC2 expression is statistically significantly different from 0. However, this is not biologically meaningful as gene expression is expected.
+
+There are missing values for the cold condition at timepoints 0 and 0.25 hrs for both roots and shoots. This affects the model and makes it unbalanced and thus some effects are confounded.
+
+Control and cold gene expression is statistically significant (p\<0.05), as is root vs shoot tissue gene expression (p\<0.05). However, not all timepoints are statistically significantly different. This is for one-way interactions and thus the effects for tissues, timepoints and conditions are pooled.
+
+The three-way interactions give best biologically significant results since each condition is taken into account. However, as some data is missing, some interactions cannot be estimated (hence NA). Only two sets of interactions have p\<0.05 and thus gene expression is statistically significantly different. These are control vs cold & root vs shoot at timepoint 1 hr vs 0 hrs. However, this highlights that ANOVA is not suitable for this data. Need to test a time-series model, in order to test whether cold vs control alters the *shape* of the time curve, within each tissue (root / shoot).
+
+## Trying polynomial time model for (AT)SRC2 
 
 ```{r}
-# lm for ORF25 expression explained by condition, tissue type and timepoint
-model_ORF25 <- data |>
-  group_by(condition, tissue, timepoint) |>
-  lm(ORF25 ~ condition * tissue * timepoint, data = _)
-print("lm() output:")
-model_ORF25 |>
-  pluck("coefficients")
+model <- lm(expression ~ condition * poly(time, 3) * tissue, data = small_test_ATSRC2)
+summary(model)
 
-
-print("summary() output:")
-model_ORF25 |>
-  summary()
 ```
 
-At intercept, i.e. control, shoots at 0 hrs, ORF25 expression is statistically significantly different from 0.
+```{r}
+small_test_ATSRC2$fitted <- predict(model)
 
-cold
+plot4 <- ggplot(small_test_ATSRC2, 
+                aes(x = time, y = expression, color = condition)) +geom_point() +
+  geom_line(aes(y = fitted)) +
+  facet_wrap(~ tissue)
 
-tissue
+plot4
 
-two way
+```
 
-three way
-
-Some parts of the 3-way interaction cannot be estimated; the model is over-parameterised. Only main effects are seen
+## Applying linear model to all genes via nested application of lm() - TBC
 
 ## Create long dataframe
 

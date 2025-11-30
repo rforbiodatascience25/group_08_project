@@ -95,7 +95,7 @@ print("Known information about (AT)SRC2 gene is that:")
 
 (AT)SRC2 is marked as being involved in protein storage vacuole targeting. In cold conditions, it is expressed at a higher rate, potentially signifying that vacuoles are used for nutrient retrieval.
 
-## Plot data for random five genes 
+## Plot data for random five genes
 
 ```{r}
 genes <- unique(data$gene)
