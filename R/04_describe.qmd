@@ -1,16 +1,122 @@
 ---
 title: "Group08 - 04_describe"
-author: "Eleni"
+author: "Dana"
 format: html
 editor: visual
 ---
 
 ## Load packages
 
-```{r}   library("tidyverse")}
+```{r}
+library("tidyverse")
 ```
 
 ## Load data
 
 ```{r}
+data <- read_tsv("../_raw/data/expression_with_metadata.tsv")
+expr_annotated  <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
 ```
+
+## View data
+
+```{r}
+View(data)
+```
+
+## Plot data for one gene e.g. (AT)SRC2
+
+### Prepare data
+
+```{r}
+data$gene <- as.factor(data$gene)
+data$condition <- factor(data$condition,
+                         levels = c("control", "cold"))
+data$tissue <- factor(data$tissue,
+                      levels = c("Roots", "Shoots"))
+data$timepoint <- factor(data$timepoint,
+                            levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h", 
+                                       "4.0h","6.0h", "12.0h", "24.0h"))
+data$replicate <- as.factor(data$replicate)
+
+plot1_data <- data |>
+  filter(gene == "(AT)SRC2") |>
+  select(-expression) |>
+  distinct(average, .keep_all = TRUE)
+
+```
+
+### Compare expression within the same condition, between different tissues
+
+```{r}
+plot1 <- 
+  ggplot(plot1_data, aes(x = timepoint,
+                         y = average,
+                         color = tissue)) +
+  geom_point() +
+  facet_wrap(~condition) +
+  ggtitle("Average log10 expression of (AT)SRC2 between both conditions, in both tissues") +
+  ylab("Log10 expression")
+  
+plot1
+```
+
+Shoots and roots have somewhat similar expression patterns- starting high and going low - in control conditions. The pattern is opposite in cold condition - starting low and going high. Since cold condition here is missing 0 and 0.25 hrs, it is unclear how quickly the expression drops between 24 hrs to 0 h (essentially the same) and 0.5 hrs (similar time). Thus, there is quite a drop between 24 hrs and 0.5 hrs.
+
+### Compare expression within the same tissues, between different conditions
+
+```{r}
+plot2 <- 
+  ggplot(plot1_data, aes(x = timepoint,
+                         y = average,
+                         color = condition)) +
+  geom_point() +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 within both conditions, \nbetween both tissues") +
+  ylab("Log10 expression")
+  
+plot2
+```
+
+Shoots and roots have different expression patterns across time. The patterns are similar between cold and control conditions, however expression seems to be lower under cold conditions.
+
+```{r}
+# find out what gene xx is
+expr_annotated_gene_info <- expr_annotated |>
+  select(genename, symbol)
+
+`(AT)SRC2_data` <- expr_annotated_gene_info |>
+  filter(symbol == "(AT)SRC2")
+
+print("Known information about (AT)SRC2 gene is that:")
+`(AT)SRC2_data`$genename
+
+```
+
+(AT)SRC2 is marked as being involved in protein storage vacuole targeting. In cold conditions, it is expressed at a higher rate, potentially signifying that vacuoles are used for nutrient retrieval.
+
+## Plot data for random five genes 
+
+```{r}
+genes <- unique(data$gene)
+five_genes <- sample(genes, 5)
+five_genes
+
+data_plot3 <- data |>
+  filter(gene %in% five_genes)
+```
+
+```{r}
+plot3 <- 
+  ggplot(data_plot3, aes(x = timepoint,
+                         y = average,
+                         color = gene)) +
+  geom_point() +
+  facet_wrap(condition~tissue) +
+  ggtitle("Average log10 expression of five randomly selected genes, between both conditions and in both tissues") +
+  ylab("Log10 expression")
+  
+plot3
+```
+
+A snippet of randomly chosen 5 genes' expression shows that the gene expression can stay similar across conditions or vary a bit.
