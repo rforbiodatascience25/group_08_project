@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Dana">
+
+<title>Group08 - 05_analysis_1</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="05_analysis_1_files/libs/clipboard/clipboard.min.js"></script>
+<script src="05_analysis_1_files/libs/quarto-html/quarto.js"></script>
+<script src="05_analysis_1_files/libs/quarto-html/popper.min.js"></script>
+<script src="05_analysis_1_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="05_analysis_1_files/libs/quarto-html/anchor.min.js"></script>
+<link href="05_analysis_1_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="05_analysis_1_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="05_analysis_1_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="05_analysis_1_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="05_analysis_1_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Group08 - 05_analysis_1</h1>
+<p class="subtitle lead">lm() via broom</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Dana </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="getting-ready" class="level1">
+<h1>Getting ready</h1>
+<section id="load-packages" class="level2">
+<h2 class="anchored" data-anchor-id="load-packages">Load packages</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"tidyverse"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+✔ purrr     1.0.4     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"purrr"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"broom"</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"stringr"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="load-data" class="level2">
+<h2 class="anchored" data-anchor-id="load-data">Load data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read_tsv</span>(<span class="st">"../_raw/data/03_dat_aug.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 633300 Columns: 9
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: "\t"
+chr (7): GSM, title, condition, tissue, timepoint, replicate, gene
+dbl (2): expression, average
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>expr_annotated <span class="ot">&lt;-</span> readr<span class="sc">::</span><span class="fu">read_tsv</span>(<span class="st">"../_raw/data/01_dat_load_2.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 22810 Columns: 63
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: "\t"
+chr  (3): probeid, genename, symbol
+dbl (60): GSM131223, GSM131224, GSM131225, GSM131226, GSM131227, GSM131228, ...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+</div>
+</section>
+<section id="prepare-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="prepare-the-data">Prepare the data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set to factors and set levels in the preferred order</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>gene <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(data<span class="sc">$</span>gene)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>condition <span class="ot">&lt;-</span> <span class="fu">factor</span>(data<span class="sc">$</span>condition,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"control"</span>, <span class="st">"cold"</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>tissue <span class="ot">&lt;-</span> <span class="fu">factor</span>(data<span class="sc">$</span>tissue,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                      <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Roots"</span>, <span class="st">"Shoots"</span>))</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>timepoint <span class="ot">&lt;-</span> <span class="fu">factor</span>(data<span class="sc">$</span>timepoint,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                            <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"0h"</span>, <span class="st">"0.25h"</span>, <span class="st">"0.5h"</span>, <span class="st">"1.0h"</span>, <span class="st">"3.0h"</span>, </span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>                                       <span class="st">"4.0h"</span>,<span class="st">"6.0h"</span>, <span class="st">"12.0h"</span>, <span class="st">"24.0h"</span>))</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>replicate <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(data<span class="sc">$</span>replicate)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co"># remove h in timepoints and convert to numeric</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>time <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">sub</span>(<span class="st">"h"</span>, <span class="st">""</span>, data<span class="sc">$</span>timepoint))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="small-test---applying-linear-model-to-one-gene-e.g.-atsrc2" class="level1">
+<h1>Small test - applying linear model to one gene (e.g.&nbsp;(AT)SRC2)</h1>
+<section id="get-the-data-for-atsrc2-only" class="level2">
+<h2 class="anchored" data-anchor-id="get-the-data-for-atsrc2-only">Get the data for (AT)SRC2 only</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>small_test_ATSRC2 <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span>  </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"(AT)SRC2"</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>small_test_ATSRC2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 60 × 10
+   GSM       title condition tissue timepoint replicate gene  expression average
+   &lt;chr&gt;     &lt;chr&gt; &lt;fct&gt;     &lt;fct&gt;  &lt;fct&gt;     &lt;fct&gt;     &lt;fct&gt;      &lt;dbl&gt;   &lt;dbl&gt;
+ 1 GSM131223 AtGe… control   Shoots 0h        Rep1      (AT)…       9.39    9.47
+ 2 GSM131224 AtGe… control   Shoots 0h        Rep2      (AT)…       9.55    9.47
+ 3 GSM131225 AtGe… control   Roots  0h        Rep1      (AT)…       7.77    8.10
+ 4 GSM131226 AtGe… control   Roots  0h        Rep2      (AT)…       8.43    8.10
+ 5 GSM131227 AtGe… control   Shoots 0.25h     Rep1      (AT)…      10.2    10.3 
+ 6 GSM131228 AtGe… control   Shoots 0.25h     Rep2      (AT)…      10.3    10.3 
+ 7 GSM131229 AtGe… control   Roots  0.25h     Rep1      (AT)…       8.98    8.88
+ 8 GSM131230 AtGe… control   Roots  0.25h     Rep2      (AT)…       8.78    8.88
+ 9 GSM131231 AtGe… control   Shoots 0.5h      Rep1      (AT)…      10.1     9.99
+10 GSM131232 AtGe… control   Shoots 0.5h      Rep2      (AT)…       9.89    9.99
+# ℹ 50 more rows
+# ℹ 1 more variable: time &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<section id="plot-atsrc2" class="level3">
+<h3 class="anchored" data-anchor-id="plot-atsrc2">Plot ATSRC2</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(small_test_ATSRC2, <span class="fu">aes</span>(<span class="at">x =</span> time,</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                              <span class="at">y =</span> expression,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">color =</span> condition)) <span class="sc">+</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> average)) <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>tissue) <span class="sc">+</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Average log10 expression of (AT)SRC2 between both conditions, in both tissues"</span>) <span class="sc">+</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Log10 expression"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-5-1.svg" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="apply-linear-model-to-atsrc2" class="level2">
+<h2 class="anchored" data-anchor-id="apply-linear-model-to-atsrc2">Apply linear model to (AT)SRC2</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># lm for ATSRC2 expression explained by condition, tissue type and timepoint</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>model_ATSRC2 <span class="ot">&lt;-</span> small_test_ATSRC2 <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(condition, tissue, timepoint) <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lm</span>(expression <span class="sc">~</span> condition <span class="sc">*</span> tissue <span class="sc">*</span> timepoint, <span class="at">data =</span> _)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"lm() output:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "lm() output:"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>model_ATSRC2 <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pluck</span>(<span class="st">"coefficients"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              (Intercept) 
+                               8.10184001 
+                            conditioncold 
+                               2.63776990 
+                             tissueShoots 
+                               1.37107881 
+                           timepoint0.25h 
+                               0.78084121 
+                            timepoint0.5h 
+                               0.66493548 
+                            timepoint1.0h 
+                               0.86777080 
+                            timepoint3.0h 
+                               0.46491922 
+                            timepoint4.0h 
+                              -0.11029982 
+                            timepoint6.0h 
+                              -0.09407598 
+                           timepoint12.0h 
+                              -0.29482574 
+                           timepoint24.0h 
+                               0.05831497 
+               conditioncold:tissueShoots 
+                               0.29874750 
+             conditioncold:timepoint0.25h 
+                                       NA 
+              conditioncold:timepoint0.5h 
+                              -3.37426563 
+              conditioncold:timepoint1.0h 
+                              -3.14313125 
+              conditioncold:timepoint3.0h 
+                              -0.95588120 
+              conditioncold:timepoint4.0h 
+                                       NA 
+              conditioncold:timepoint6.0h 
+                               0.10124323 
+             conditioncold:timepoint12.0h 
+                               0.45457269 
+             conditioncold:timepoint24.0h 
+                                       NA 
+              tissueShoots:timepoint0.25h 
+                               0.01411131 
+               tissueShoots:timepoint0.5h 
+                              -0.14563167 
+               tissueShoots:timepoint1.0h 
+                              -1.66903957 
+               tissueShoots:timepoint3.0h 
+                              -1.63953232 
+               tissueShoots:timepoint4.0h 
+                              -0.56090411 
+               tissueShoots:timepoint6.0h 
+                              -1.32337841 
+              tissueShoots:timepoint12.0h 
+                              -1.17402716 
+              tissueShoots:timepoint24.0h 
+                              -1.00697156 
+conditioncold:tissueShoots:timepoint0.25h 
+                                       NA 
+ conditioncold:tissueShoots:timepoint0.5h 
+                              -0.54190616 
+ conditioncold:tissueShoots:timepoint1.0h 
+                               1.54314001 
+ conditioncold:tissueShoots:timepoint3.0h 
+                               0.95792680 
+ conditioncold:tissueShoots:timepoint4.0h 
+                                       NA 
+ conditioncold:tissueShoots:timepoint6.0h 
+                               0.39144479 
+conditioncold:tissueShoots:timepoint12.0h 
+                              -0.31962058 
+conditioncold:tissueShoots:timepoint24.0h 
+                                       NA </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"summary() output:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "summary() output:"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>model_ATSRC2 <span class="sc">|&gt;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = expression ~ condition * tissue * timepoint, data = group_by(small_test_ATSRC2, 
+    condition, tissue, timepoint))
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.35512 -0.08573  0.00000  0.08573  0.35512 
+
+Coefficients: (6 not defined because of singularities)
+                                          Estimate Std. Error t value Pr(&gt;|t|)
+(Intercept)                                8.10184    0.14812  54.699  &lt; 2e-16
+conditioncold                              2.63777    0.20947  12.593 1.66e-13
+tissueShoots                               1.37108    0.20947   6.546 3.07e-07
+timepoint0.25h                             0.78084    0.20947   3.728 0.000802
+timepoint0.5h                              0.66494    0.20947   3.174 0.003459
+timepoint1.0h                              0.86777    0.20947   4.143 0.000258
+timepoint3.0h                              0.46492    0.20947   2.220 0.034157
+timepoint4.0h                             -0.11030    0.20947  -0.527 0.602365
+timepoint6.0h                             -0.09408    0.20947  -0.449 0.656575
+timepoint12.0h                            -0.29483    0.20947  -1.407 0.169559
+timepoint24.0h                             0.05831    0.20947   0.278 0.782619
+conditioncold:tissueShoots                 0.29875    0.29623   1.008 0.321287
+conditioncold:timepoint0.25h                    NA         NA      NA       NA
+conditioncold:timepoint0.5h               -3.37427    0.29623 -11.391 2.03e-12
+conditioncold:timepoint1.0h               -3.14313    0.29623 -10.610 1.13e-11
+conditioncold:timepoint3.0h               -0.95588    0.29623  -3.227 0.003022
+conditioncold:timepoint4.0h                     NA         NA      NA       NA
+conditioncold:timepoint6.0h                0.10124    0.29623   0.342 0.734908
+conditioncold:timepoint12.0h               0.45457    0.29623   1.535 0.135385
+conditioncold:timepoint24.0h                    NA         NA      NA       NA
+tissueShoots:timepoint0.25h                0.01411    0.29623   0.048 0.962322
+tissueShoots:timepoint0.5h                -0.14563    0.29623  -0.492 0.626572
+tissueShoots:timepoint1.0h                -1.66904    0.29623  -5.634 3.89e-06
+tissueShoots:timepoint3.0h                -1.63953    0.29623  -5.535 5.15e-06
+tissueShoots:timepoint4.0h                -0.56090    0.29623  -1.893 0.067978
+tissueShoots:timepoint6.0h                -1.32338    0.29623  -4.467 0.000104
+tissueShoots:timepoint12.0h               -1.17403    0.29623  -3.963 0.000422
+tissueShoots:timepoint24.0h               -1.00697    0.29623  -3.399 0.001927
+conditioncold:tissueShoots:timepoint0.25h       NA         NA      NA       NA
+conditioncold:tissueShoots:timepoint0.5h  -0.54191    0.41894  -1.294 0.205701
+conditioncold:tissueShoots:timepoint1.0h   1.54314    0.41894   3.683 0.000904
+conditioncold:tissueShoots:timepoint3.0h   0.95793    0.41894   2.287 0.029451
+conditioncold:tissueShoots:timepoint4.0h        NA         NA      NA       NA
+conditioncold:tissueShoots:timepoint6.0h   0.39144    0.41894   0.934 0.357571
+conditioncold:tissueShoots:timepoint12.0h -0.31962    0.41894  -0.763 0.451462
+conditioncold:tissueShoots:timepoint24.0h       NA         NA      NA       NA
+                                             
+(Intercept)                               ***
+conditioncold                             ***
+tissueShoots                              ***
+timepoint0.25h                            ***
+timepoint0.5h                             ** 
+timepoint1.0h                             ***
+timepoint3.0h                             *  
+timepoint4.0h                                
+timepoint6.0h                                
+timepoint12.0h                               
+timepoint24.0h                               
+conditioncold:tissueShoots                   
+conditioncold:timepoint0.25h                 
+conditioncold:timepoint0.5h               ***
+conditioncold:timepoint1.0h               ***
+conditioncold:timepoint3.0h               ** 
+conditioncold:timepoint4.0h                  
+conditioncold:timepoint6.0h                  
+conditioncold:timepoint12.0h                 
+conditioncold:timepoint24.0h                 
+tissueShoots:timepoint0.25h                  
+tissueShoots:timepoint0.5h                   
+tissueShoots:timepoint1.0h                ***
+tissueShoots:timepoint3.0h                ***
+tissueShoots:timepoint4.0h                .  
+tissueShoots:timepoint6.0h                ***
+tissueShoots:timepoint12.0h               ***
+tissueShoots:timepoint24.0h               ** 
+conditioncold:tissueShoots:timepoint0.25h    
+conditioncold:tissueShoots:timepoint0.5h     
+conditioncold:tissueShoots:timepoint1.0h  ***
+conditioncold:tissueShoots:timepoint3.0h  *  
+conditioncold:tissueShoots:timepoint4.0h     
+conditioncold:tissueShoots:timepoint6.0h     
+conditioncold:tissueShoots:timepoint12.0h    
+conditioncold:tissueShoots:timepoint24.0h    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.2095 on 30 degrees of freedom
+Multiple R-squared:  0.9851,    Adjusted R-squared:  0.9706 
+F-statistic: 68.23 on 29 and 30 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>At intercept, i.e.&nbsp;control, roots at 0 hrs, (AT)SRC2 expression is statistically significantly different from 0. However, this is not biologically meaningful as gene expression is expected.</p>
+<p>There are missing values for the cold condition at timepoints 0 and 0.25 hrs for both roots and shoots. This affects the model and makes it unbalanced and thus some effects are confounded.</p>
+<p>Control and cold gene expression is statistically significant (p&lt;0.05), as is root vs shoot tissue gene expression (p&lt;0.05). However, not all timepoints are statistically significantly different. This is for one-way interactions and thus the effects for tissues, timepoints and conditions are pooled.</p>
+<p>The three-way interactions give best biologically significant results since each condition is taken into account. However, as some data is missing, some interactions cannot be estimated (hence NA). Only two sets of interactions have p&lt;0.05 and thus gene expression is statistically significantly different. These are control vs cold &amp; root vs shoot at timepoint 1 hr vs 0 hrs. However, this highlights that ANOVA is not suitable for this data. Need to test a time-series model, in order to test whether cold vs control alters the <em>shape</em> of the time curve, within each tissue (root / shoot).</p>
+</section>
+<section id="polynomial-time-model-for-atsrc2" class="level2">
+<h2 class="anchored" data-anchor-id="polynomial-time-model-for-atsrc2">Polynomial time model for (AT)SRC2</h2>
+<section id="create-model" class="level3">
+<h3 class="anchored" data-anchor-id="create-model">Create model</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">lm</span>(expression <span class="sc">~</span> condition <span class="sc">*</span> <span class="fu">poly</span>(time, <span class="dv">3</span>) <span class="sc">*</span> tissue, <span class="at">data =</span> small_test_ATSRC2)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = expression ~ condition * poly(time, 3) * tissue, 
+    data = small_test_ATSRC2)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.93002 -0.20762  0.00306  0.20200  0.68760 
+
+Coefficients:
+                                          Estimate Std. Error t value Pr(&gt;|t|)
+(Intercept)                                8.32428    0.09117  91.302  &lt; 2e-16
+conditioncold                              1.29174    0.14540   8.884 2.25e-11
+poly(time, 3)1                            -1.52954    0.74061  -2.065 0.044821
+poly(time, 3)2                             1.82710    0.73110   2.499 0.016256
+poly(time, 3)3                             0.12012    0.69863   0.172 0.864271
+tissueShoots                               0.49376    0.12894   3.829 0.000403
+conditioncold:poly(time, 3)1               8.37357    1.11064   7.539 1.87e-09
+conditioncold:poly(time, 3)2              -7.97086    1.12418  -7.090 8.43e-09
+conditioncold:poly(time, 3)3               3.52551    1.14184   3.088 0.003488
+conditioncold:tissueShoots                 0.41749    0.20562   2.030 0.048389
+poly(time, 3)1:tissueShoots               -1.30340    1.04738  -1.244 0.219925
+poly(time, 3)2:tissueShoots                2.01452    1.03393   1.948 0.057763
+poly(time, 3)3:tissueShoots               -1.72496    0.98801  -1.746 0.087810
+conditioncold:poly(time, 3)1:tissueShoots -0.64805    1.57068  -0.413 0.681907
+conditioncold:poly(time, 3)2:tissueShoots -0.10245    1.58984  -0.064 0.948911
+conditioncold:poly(time, 3)3:tissueShoots  2.36813    1.61480   1.467 0.149619
+                                             
+(Intercept)                               ***
+conditioncold                             ***
+poly(time, 3)1                            *  
+poly(time, 3)2                            *  
+poly(time, 3)3                               
+tissueShoots                              ***
+conditioncold:poly(time, 3)1              ***
+conditioncold:poly(time, 3)2              ***
+conditioncold:poly(time, 3)3              ** 
+conditioncold:tissueShoots                *  
+poly(time, 3)1:tissueShoots                  
+poly(time, 3)2:tissueShoots               .  
+poly(time, 3)3:tissueShoots               .  
+conditioncold:poly(time, 3)1:tissueShoots    
+conditioncold:poly(time, 3)2:tissueShoots    
+conditioncold:poly(time, 3)3:tissueShoots    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.3835 on 44 degrees of freedom
+Multiple R-squared:  0.9266,    Adjusted R-squared:  0.9015 
+F-statistic: 37.01 on 15 and 44 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>Polynomial time allows to test whether gene expression changes over time in a smooth way, and whether that curve is different between conditions and tissues.</p>
+<p>Since p-value for conditioncold is below 0.05, there is a statistically significant difference between control and cold conditions <u>at time 0 hrs</u>. Since poly(time, 3)1 and 2 are also statistically significant (p&lt;0.05), the gene expression between conditions across time is also different, i.e.&nbsp;there is a curve / pattern to how the gene expression occurs over time. Additionally, since conditioncold:poly(time, 3)1 to 3 are all significant, the two conditions have different curves over time.</p>
+<p>Since tissueShoots is significant, there is a difference in gene expressions between roots and shoots at <u>time 0 hrs</u>. However, there is weak evidence that the gene expression dynamics are different in roots and shoots at different timepoints, since poly(time, 3)1:tissueShoots (until poly 3) are not all statistically significant i.e.&nbsp;p-value is not &lt;0.05 for all 3 polynomials.</p>
+<p>Since all three-way interaction terms are non-significant (p&gt;0.05), there is no statistically significant interactions between condition x tissue x time. Therefore, while the cold changes the time trend, and shoots vs roots differ slightly in gene expression patterns, the cold condition does not affect shoots differently from roots in terms of time response.</p>
+</section>
+<section id="plot-model" class="level3">
+<h3 class="anchored" data-anchor-id="plot-model">Plot model</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>small_test_ATSRC2<span class="sc">$</span>fitted <span class="ot">&lt;-</span> <span class="fu">predict</span>(model)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>plot4 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(small_test_ATSRC2, </span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>                <span class="fu">aes</span>(<span class="at">x =</span> time, </span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>                    <span class="at">y =</span> expression, </span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">color =</span> condition)) <span class="sc">+</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> fitted)) <span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> tissue) <span class="sc">+</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Gene expession (log10 adjusted)"</span>) <span class="sc">+</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Time (hrs)"</span>) <span class="sc">+</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"(AT)SRC2 experssion (dots) and its polynomial model prediction (curve)</span><span class="sc">\n</span><span class="st"> across conditions and tissue types"</span>)</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>plot4</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-8-1.svg" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="applying-polynomial-model-to-all-genes-via-nested-application-of-lm" class="level2">
+<h2 class="anchored" data-anchor-id="applying-polynomial-model-to-all-genes-via-nested-application-of-lm">Applying polynomial model to all genes via nested application of lm()</h2>
+</section>
+<section id="create-nested-dataframe" class="level2">
+<h2 class="anchored" data-anchor-id="create-nested-dataframe">Create nested dataframe</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>nested_data <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(gene) <span class="sc">|&gt;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">nest</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>nested_data</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10,555 × 2
+   gene    data             
+   &lt;fct&gt;   &lt;list&gt;           
+ 1 ORF25   &lt;tibble [60 × 9]&gt;
+ 2 ORF149  &lt;tibble [60 × 9]&gt;
+ 3 ORF275  &lt;tibble [60 × 9]&gt;
+ 4 ORF122C &lt;tibble [60 × 9]&gt;
+ 5 ORF120  &lt;tibble [60 × 9]&gt;
+ 6 ORF107D &lt;tibble [60 × 9]&gt;
+ 7 ORF100A &lt;tibble [60 × 9]&gt;
+ 8 ORF170  &lt;tibble [60 × 9]&gt;
+ 9 CCB382  &lt;tibble [60 × 9]&gt;
+10 ORF121B &lt;tibble [60 × 9]&gt;
+# ℹ 10,545 more rows</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>nested_data <span class="sc">|&gt;</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"(AT)SRC2"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+# A tibble: 60 × 9
+   GSM       title condition tissue timepoint replicate expression average  time
+   &lt;chr&gt;     &lt;chr&gt; &lt;fct&gt;     &lt;fct&gt;  &lt;fct&gt;     &lt;fct&gt;          &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;
+ 1 GSM131223 AtGe… control   Shoots 0h        Rep1            9.39    9.47  0   
+ 2 GSM131224 AtGe… control   Shoots 0h        Rep2            9.55    9.47  0   
+ 3 GSM131225 AtGe… control   Roots  0h        Rep1            7.77    8.10  0   
+ 4 GSM131226 AtGe… control   Roots  0h        Rep2            8.43    8.10  0   
+ 5 GSM131227 AtGe… control   Shoots 0.25h     Rep1           10.2    10.3   0.25
+ 6 GSM131228 AtGe… control   Shoots 0.25h     Rep2           10.3    10.3   0.25
+ 7 GSM131229 AtGe… control   Roots  0.25h     Rep1            8.98    8.88  0.25
+ 8 GSM131230 AtGe… control   Roots  0.25h     Rep2            8.78    8.88  0.25
+ 9 GSM131231 AtGe… control   Shoots 0.5h      Rep1           10.1     9.99  0.5 
+10 GSM131232 AtGe… control   Shoots 0.5h      Rep2            9.89    9.99  0.5 
+# ℹ 50 more rows</code></pre>
+</div>
+</div>
+</section>
+<section id="apply-model_object-to-nested-data" class="level2">
+<h2 class="anchored" data-anchor-id="apply-model_object-to-nested-data">Apply model_object to nested data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>nested_data <span class="ot">&lt;-</span> nested_data <span class="sc">|&gt;</span> </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(gene) <span class="sc">|&gt;</span> </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">model_object =</span> <span class="fu">map</span>(<span class="at">.x =</span> data,</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>                            <span class="at">.f =</span> <span class="sc">~</span><span class="fu">lm</span>(<span class="at">formula =</span> expression <span class="sc">~</span> condition <span class="sc">*</span> <span class="fu">poly</span>(time, <span class="dv">3</span>) <span class="sc">*</span> tissue, <span class="at">data =</span> .x)))</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>nested_data</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10,555 × 3
+# Groups:   gene [10,555]
+   gene    data              model_object
+   &lt;fct&gt;   &lt;list&gt;            &lt;list&gt;      
+ 1 ORF25   &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 2 ORF149  &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 3 ORF275  &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 4 ORF122C &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 5 ORF120  &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 6 ORF107D &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 7 ORF100A &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 8 ORF170  &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+ 9 CCB382  &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+10 ORF121B &lt;tibble [60 × 9]&gt; &lt;lm&gt;        
+# ℹ 10,545 more rows</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>nested_data <span class="sc">|&gt;</span> </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"(AT)SRC2"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(model_object)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+
+Call:
+lm(formula = expression ~ condition * poly(time, 3) * tissue, 
+    data = .x)
+
+Coefficients:
+                              (Intercept)  
+                                   8.3243  
+                            conditioncold  
+                                   1.2917  
+                           poly(time, 3)1  
+                                  -1.5295  
+                           poly(time, 3)2  
+                                   1.8271  
+                           poly(time, 3)3  
+                                   0.1201  
+                             tissueShoots  
+                                   0.4938  
+             conditioncold:poly(time, 3)1  
+                                   8.3736  
+             conditioncold:poly(time, 3)2  
+                                  -7.9709  
+             conditioncold:poly(time, 3)3  
+                                   3.5255  
+               conditioncold:tissueShoots  
+                                   0.4175  
+              poly(time, 3)1:tissueShoots  
+                                  -1.3034  
+              poly(time, 3)2:tissueShoots  
+                                   2.0145  
+              poly(time, 3)3:tissueShoots  
+                                  -1.7250  
+conditioncold:poly(time, 3)1:tissueShoots  
+                                  -0.6481  
+conditioncold:poly(time, 3)2:tissueShoots  
+                                  -0.1025  
+conditioncold:poly(time, 3)3:tissueShoots  
+                                   2.3681  </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># tidy using broom</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>nested_data <span class="ot">&lt;-</span> nested_data <span class="sc">|&gt;</span> </span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">model_object_tidy =</span> <span class="fu">map</span>(<span class="at">.x =</span> model_object,</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">.f =</span> <span class="sc">~</span><span class="fu">tidy</span>(<span class="at">x =</span> .x,</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>                                            <span class="at">conf.int =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>                                            <span class="at">conf.level =</span> <span class="fl">0.95</span>)))</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>nested_data</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10,555 × 4
+# Groups:   gene [10,555]
+   gene    data              model_object model_object_tidy
+   &lt;fct&gt;   &lt;list&gt;            &lt;list&gt;       &lt;list&gt;           
+ 1 ORF25   &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 2 ORF149  &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 3 ORF275  &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 4 ORF122C &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 5 ORF120  &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 6 ORF107D &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 7 ORF100A &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 8 ORF170  &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+ 9 CCB382  &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+10 ORF121B &lt;tibble [60 × 9]&gt; &lt;lm&gt;         &lt;tibble [16 × 7]&gt;
+# ℹ 10,545 more rows</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>nested_data <span class="sc">|&gt;</span> </span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"(AT)SRC2"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(model_object_tidy)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+# A tibble: 16 × 7
+   term                 estimate std.error statistic  p.value conf.low conf.high
+   &lt;chr&gt;                   &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+ 1 (Intercept)             8.32     0.0912   91.3    8.38e-52  8.14e+0    8.51  
+ 2 conditioncold           1.29     0.145     8.88   2.25e-11  9.99e-1    1.58  
+ 3 poly(time, 3)1         -1.53     0.741    -2.07   4.48e- 2 -3.02e+0   -0.0369
+ 4 poly(time, 3)2          1.83     0.731     2.50   1.63e- 2  3.54e-1    3.30  
+ 5 poly(time, 3)3          0.120    0.699     0.172  8.64e- 1 -1.29e+0    1.53  
+ 6 tissueShoots            0.494    0.129     3.83   4.03e- 4  2.34e-1    0.754 
+ 7 conditioncold:poly(…    8.37     1.11      7.54   1.87e- 9  6.14e+0   10.6   
+ 8 conditioncold:poly(…   -7.97     1.12     -7.09   8.43e- 9 -1.02e+1   -5.71  
+ 9 conditioncold:poly(…    3.53     1.14      3.09   3.49e- 3  1.22e+0    5.83  
+10 conditioncold:tissu…    0.417    0.206     2.03   4.84e- 2  3.09e-3    0.832 
+11 poly(time, 3)1:tiss…   -1.30     1.05     -1.24   2.20e- 1 -3.41e+0    0.807 
+12 poly(time, 3)2:tiss…    2.01     1.03      1.95   5.78e- 2 -6.92e-2    4.10  
+13 poly(time, 3)3:tiss…   -1.72     0.988    -1.75   8.78e- 2 -3.72e+0    0.266 
+14 conditioncold:poly(…   -0.648    1.57     -0.413  6.82e- 1 -3.81e+0    2.52  
+15 conditioncold:poly(…   -0.102    1.59     -0.0644 9.49e- 1 -3.31e+0    3.10  
+16 conditioncold:poly(…    2.37     1.61      1.47   1.50e- 1 -8.86e-1    5.62  </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># unpack the nested models</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>data_estimates <span class="ot">&lt;-</span> nested_data <span class="sc">|&gt;</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(model_object_tidy) <span class="sc">|&gt;</span> </span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(term <span class="sc">!=</span> <span class="st">"(Intercept)"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(gene, term, estimate, p.value, conf.low, conf.high) <span class="sc">|&gt;</span> </span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>data_estimates</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 158,325 × 6
+   gene  term                         estimate    p.value conf.low conf.high
+   &lt;fct&gt; &lt;chr&gt;                           &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+ 1 ORF25 conditioncold                   0.378 0.00438       0.125     0.632
+ 2 ORF25 poly(time, 3)1                  0.530 0.413        -0.763     1.82 
+ 3 ORF25 poly(time, 3)2                 -0.263 0.680        -1.54      1.01 
+ 4 ORF25 poly(time, 3)3                 -0.170 0.780        -1.39      1.05 
+ 5 ORF25 tissueShoots                    0.633 0.00000105    0.408     0.858
+ 6 ORF25 conditioncold:poly(time, 3)1    0.288 0.766        -1.65      2.23 
+ 7 ORF25 conditioncold:poly(time, 3)2    0.156 0.873        -1.81      2.12 
+ 8 ORF25 conditioncold:poly(time, 3)3    1.00  0.317        -0.993     2.99 
+ 9 ORF25 conditioncold:tissueShoots     -0.564 0.00281      -0.923    -0.205
+10 ORF25 poly(time, 3)1:tissueShoots     0.386 0.672        -1.44      2.21 
+# ℹ 158,315 more rows</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add q value</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>data_estimates <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">q.value =</span> <span class="fu">p.adjust</span>(p.value),</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">is_significant =</span> <span class="fu">case_when</span>(q.value <span class="sc">&lt;=</span> <span class="fl">0.05</span> <span class="sc">~</span> <span class="st">"yes"</span>,</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>                                    q.value <span class="sc">&gt;</span> <span class="fl">0.05</span> <span class="sc">~</span> <span class="st">"no"</span>))</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>data_estimates</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 158,325 × 8
+   gene  term         estimate p.value conf.low conf.high q.value is_significant
+   &lt;fct&gt; &lt;chr&gt;           &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;         
+ 1 ORF25 conditionco…    0.378 4.38e-3    0.125     0.632   1     no            
+ 2 ORF25 poly(time, …    0.530 4.13e-1   -0.763     1.82    1     no            
+ 3 ORF25 poly(time, …   -0.263 6.80e-1   -1.54      1.01    1     no            
+ 4 ORF25 poly(time, …   -0.170 7.80e-1   -1.39      1.05    1     no            
+ 5 ORF25 tissueShoots    0.633 1.05e-6    0.408     0.858   0.155 no            
+ 6 ORF25 conditionco…    0.288 7.66e-1   -1.65      2.23    1     no            
+ 7 ORF25 conditionco…    0.156 8.73e-1   -1.81      2.12    1     no            
+ 8 ORF25 conditionco…    1.00  3.17e-1   -0.993     2.99    1     no            
+ 9 ORF25 conditionco…   -0.564 2.81e-3   -0.923    -0.205   1     no            
+10 ORF25 poly(time, …    0.386 6.72e-1   -1.44      2.21    1     no            
+# ℹ 158,315 more rows</code></pre>
+</div>
+</div>
+</section>
+<section id="select-statistically-significant-genes" class="level2">
+<h2 class="anchored" data-anchor-id="select-statistically-significant-genes">Select statistically significant genes</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>significant_data_estimates <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(gene, term, estimate, p.value, q.value)</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>significant_data_estimates</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 9,980 × 5
+   gene    term         estimate  p.value  q.value
+   &lt;fct&gt;   &lt;chr&gt;           &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+ 1 ORF107E tissueShoots    -1.38 8.08e- 8 1.20e- 2
+ 2 PSAC    tissueShoots     3.62 1.64e-21 2.55e-16
+ 3 NDHE    tissueShoots     3.39 2.52e-21 3.91e-16
+ 4 NDHG    tissueShoots     3.54 2.64e-28 4.14e-23
+ 5 NDHI    tissueShoots     3.24 4.21e-31 6.61e-26
+ 6 NDHA    tissueShoots     3.85 2.89e-30 4.54e-25
+ 7 NDHH    tissueShoots     3.94 3.33e-25 5.20e-20
+ 8 RPS15   tissueShoots     2.35 4.30e-20 6.66e-15
+ 9 RPS12   tissueShoots     2.72 1.81e-17 2.79e-12
+10 RPS12.1 tissueShoots     2.44 7.48e-21 1.16e-15
+# ℹ 9,970 more rows</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>raw_data <span class="ot">&lt;-</span> nested_data <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(gene, data) <span class="sc">|&gt;</span> <span class="fu">unnest</span>(data)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>annotated_sig_results <span class="ot">&lt;-</span> raw_data <span class="sc">|&gt;</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(data_estimates <span class="sc">|&gt;</span> <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>),</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">by =</span> <span class="st">"gene"</span>,</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">relationship =</span> <span class="st">"many-to-many"</span>)</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>readr<span class="sc">::</span><span class="fu">write_tsv</span>(annotated_sig_results, <span class="st">"../_raw/data/05_analysis_1_results.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="forest-plot" class="level1">
+<h1>Forest plot</h1>
+<section id="plot-allllll-the-genes" class="level2">
+<h2 class="anchored" data-anchor-id="plot-allllll-the-genes">Plot allllll the genes</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>forest_plot <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span> </span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate,</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmin =</span> conf.low,</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmax =</span> conf.high)) <span class="sc">+</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">16</span>) <span class="sc">+</span></span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CIs)"</span>,</span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Statistically significant gene expression estimates </span><span class="sc">\n</span><span class="st">across control and cold condtions, within roots and shoots"</span>)</span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>forest_plot</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-19-1.svg" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Too many genes!</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check dimensions</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(significant_data_estimates)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 9980    5</code></pre>
+</div>
+</div>
+<p>There are 9980 entries to be plotted. That’s too many for a Forest plot. Better investigate heatmaps, PCA or just plot top 20 in terms of absolute estimate.</p>
+</section>
+<section id="try-plotting-p0.01-to-see-if-there-are-less-genes-and-plot-is-more-interpretable" class="level2">
+<h2 class="anchored" data-anchor-id="try-plotting-p0.01-to-see-if-there-are-less-genes-and-plot-is-more-interpretable">Try plotting p&lt;0.01 to see if there are less genes and plot is more interpretable</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co"># instead of plotting q value &lt;0.05, check 0.01:</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>forest_plot_q_value <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(q.value <span class="sc">&lt;</span> <span class="fl">0.01</span> <span class="sc">&amp;</span> is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate,</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmin =</span> conf.low,</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmax =</span> conf.high)) <span class="sc">+</span></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb45-9"><a href="#cb45-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb45-10"><a href="#cb45-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb45-11"><a href="#cb45-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">16</span>) <span class="sc">+</span></span>
+<span id="cb45-12"><a href="#cb45-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb45-13"><a href="#cb45-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CIs)"</span>,</span>
+<span id="cb45-14"><a href="#cb45-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb45-15"><a href="#cb45-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Statistically significant gene expression estimates </span><span class="sc">\n</span><span class="st">across normal and stressed condtions"</span>)</span>
+<span id="cb45-16"><a href="#cb45-16" aria-hidden="true" tabindex="-1"></a>forest_plot_q_value</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-21-1.svg" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(q.value <span class="sc">&lt;</span> <span class="fl">0.01</span> <span class="sc">&amp;</span> is_significant <span class="sc">==</span> <span class="st">"yes"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 9099    8</code></pre>
+</div>
+</div>
+<p>Still too big, there are 9099 rows!</p>
+</section>
+<section id="try-top-20-coefficients-in-forest-plot" class="level2">
+<h2 class="anchored" data-anchor-id="try-top-20-coefficients-in-forest-plot">Try top 20 coefficients in Forest plot</h2>
+<section id="all-coefficients-allowed" class="level3">
+<h3 class="anchored" data-anchor-id="all-coefficients-allowed">All coefficients allowed</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># choose top 20 terms by absolute effect size i.e. not top 20 genes, but 20 coefficients</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="co"># this allows to find which model terms have the strongest effects across all genes</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>topN <span class="ot">&lt;-</span> <span class="dv">20</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>forest_plot_top20 <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(<span class="at">order_by =</span> <span class="fu">abs</span>(estimate), <span class="at">n =</span> topN) <span class="sc">|&gt;</span></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(</span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> estimate,</span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">xmin =</span> conf.low,</span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">xmax =</span> conf.high,</span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">colour =</span> term</span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
+<span id="cb48-15"><a href="#cb48-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb48-16"><a href="#cb48-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb48-17"><a href="#cb48-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb48-18"><a href="#cb48-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">16</span>) <span class="sc">+</span></span>
+<span id="cb48-19"><a href="#cb48-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position=</span><span class="st">"bottom"</span>)<span class="sc">+</span></span>
+<span id="cb48-20"><a href="#cb48-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">colour =</span> <span class="fu">guide_legend</span>(<span class="at">ncol =</span> <span class="dv">2</span>)) <span class="sc">+</span></span>
+<span id="cb48-21"><a href="#cb48-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CIs)"</span>,</span>
+<span id="cb48-22"><a href="#cb48-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb48-23"><a href="#cb48-23" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Statistically significant gene expression estimates across control and </span><span class="sc">\n</span><span class="st">cold conditions, within roots and shoots, for genes of top 20 highest </span><span class="sc">\n</span><span class="st">absolute estimate value"</span>,</span>
+<span id="cb48-24"><a href="#cb48-24" aria-hidden="true" tabindex="-1"></a>       <span class="at">colour =</span> <span class="st">"Model terms"</span>) </span>
+<span id="cb48-25"><a href="#cb48-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-26"><a href="#cb48-26" aria-hidden="true" tabindex="-1"></a>forest_plot_top20</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-23-1.svg" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Most of the genes with the greatest estimate effect shows the gene is upregulated with time in the cold condition (conditioncold:poly(time, 3)1).</p>
+</section>
+<section id="plot-all-genes-for-cold-time-tissue-interaction-i.e.-limit-the-allowed-coefficients" class="level3">
+<h3 class="anchored" data-anchor-id="plot-all-genes-for-cold-time-tissue-interaction-i.e.-limit-the-allowed-coefficients">Plot all genes for cold × time × tissue interaction (i.e.&nbsp;limit the allowed coefficients)</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co"># choose the three way interaction </span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>cold_time_tissue <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_detect</span>(term, <span class="st">"conditioncold:poly</span><span class="sc">\\</span><span class="st">(time, 3</span><span class="sc">\\</span><span class="st">).*:tissue"</span>)) <span class="co"># * refers to 1, 2 and 3 polynomials</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a><span class="co"># filter only the statistically significant ones</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>cold_time_tissue_sig <span class="ot">&lt;-</span> cold_time_tissue <span class="sc">|&gt;</span></span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>forest_plot_cold_time_tissue <span class="ot">&lt;-</span> cold_time_tissue_sig <span class="sc">|&gt;</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> estimate,</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">xmin =</span> conf.low,</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">xmax =</span> conf.high,</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">colour =</span> term)) <span class="sc">+</span></span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">16</span>) <span class="sc">+</span></span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">colour =</span> <span class="fu">guide_legend</span>(<span class="at">ncol =</span> <span class="dv">2</span>)) <span class="sc">+</span></span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CI)"</span>,</span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Cold × Time × Tissue interaction effects across all genes"</span>,</span>
+<span id="cb50-17"><a href="#cb50-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">colour =</span> <span class="st">"Model term"</span>)</span>
+<span id="cb50-18"><a href="#cb50-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-19"><a href="#cb50-19" aria-hidden="true" tabindex="-1"></a>forest_plot_cold_time_tissue</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-25-1.svg" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Many genes! most common colour is that for conditioncold:poly(time, 3)1:tissueShoots so it is most commonly a statistically significant term in the model.</p>
+<section id="find-genes-affected-the-most-by-the-cold-time-tissue-interaction" class="level4">
+<h4 class="anchored" data-anchor-id="find-genes-affected-the-most-by-the-cold-time-tissue-interaction">Find genes affected the most by the cold × time × tissue interaction</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>forest_plot_top20_interaction <span class="ot">&lt;-</span> cold_time_tissue_sig <span class="sc">|&gt;</span></span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(<span class="at">order_by =</span> <span class="fu">abs</span>(estimate), <span class="at">n =</span> <span class="dv">20</span>)</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>forest_plot_top20_interaction</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 20 × 8
+   gene    term      estimate  p.value conf.low conf.high q.value is_significant
+   &lt;fct&gt;   &lt;chr&gt;        &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;         
+ 1 AtPDC1  conditio…     21.4 2.16e-10     16.1      26.6 3.26e-5 yes           
+ 2 ATNIG1  conditio…    -18.8 3.27e- 7    -25.1     -12.5 4.85e-2 yes           
+ 3 ADH     conditio…     18.7 3.63e-12     14.7      22.6 5.52e-7 yes           
+ 4 AtRGL3  conditio…     18.1 3.15e- 7     12.1      24.2 4.67e-2 yes           
+ 5 LCR70   conditio…    -18.1 3.67e- 9    -23.0     -13.1 5.51e-4 yes           
+ 6 PMAT2   conditio…    -17.4 1.86e- 7    -23.1     -11.7 2.77e-2 yes           
+ 7 ATGPT2  conditio…     17.4 1.08e- 7     11.8      22.9 1.61e-2 yes           
+ 8 ATGPT2  conditio…    -17.2 1.76e- 7    -22.8     -11.6 2.62e-2 yes           
+ 9 LTP     conditio…    -17.1 2.15e-10    -21.3     -12.9 3.25e-5 yes           
+10 LTI30   conditio…     16.5 1.02e- 9     12.2      20.8 1.54e-4 yes           
+11 BBX16   conditio…    -16.4 7.32e-15    -19.3     -13.6 1.12e-9 yes           
+12 ATFRO6  conditio…    -16.0 7.05e- 8    -21.0     -11.0 1.05e-2 yes           
+13 AtBAM3  conditio…    -15.7 3.63e- 9    -20.0     -11.4 5.46e-4 yes           
+14 CBP60G  conditio…    -15.6 1.31e-10    -19.4     -11.8 1.99e-5 yes           
+15 BBX11   conditio…     15.4 5.16e-11     11.8      19.0 7.82e-6 yes           
+16 GBSS1   conditio…    -15.3 5.24e-13    -18.3     -12.2 7.99e-8 yes           
+17 atnudt8 conditio…     15.3 1.00e-12     12.1      18.4 1.52e-7 yes           
+18 AtRbcX1 conditio…     14.8 3.27e- 8     10.3      19.3 4.89e-3 yes           
+19 SAUR72  conditio…     14.7 2.04e- 9     10.8      18.7 3.06e-4 yes           
+20 TN8     conditio…    -14.7 6.98e- 8    -19.3     -10.1 1.04e-2 yes           </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>forest_plot_cold_time_tissue_top20 <span class="ot">&lt;-</span> forest_plot_top20_interaction <span class="sc">|&gt;</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate,</span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>             <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmin =</span> conf.low,</span>
+<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmax =</span> conf.high,</span>
+<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a>             <span class="at">colour =</span> term)) <span class="sc">+</span></span>
+<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb53-8"><a href="#cb53-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb53-9"><a href="#cb53-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb53-10"><a href="#cb53-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">16</span>) <span class="sc">+</span></span>
+<span id="cb53-11"><a href="#cb53-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb53-12"><a href="#cb53-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">colour =</span> <span class="fu">guide_legend</span>(<span class="at">ncol =</span> <span class="dv">2</span>)) <span class="sc">+</span></span>
+<span id="cb53-13"><a href="#cb53-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CI)"</span>,</span>
+<span id="cb53-14"><a href="#cb53-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb53-15"><a href="#cb53-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Cold × Time × Tissue interaction effects across top 20 genes"</span>,</span>
+<span id="cb53-16"><a href="#cb53-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">colour =</span> <span class="st">"Model term"</span>)</span>
+<span id="cb53-17"><a href="#cb53-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-18"><a href="#cb53-18" aria-hidden="true" tabindex="-1"></a>forest_plot_cold_time_tissue_top20</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-27-1.svg" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="find-the-top-20-genes-roles-and-their-estimate-effects" class="level4">
+<h4 class="anchored" data-anchor-id="find-the-top-20-genes-roles-and-their-estimate-effects">Find the top 20 genes’ roles and their estimate effects</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>top20_gene_names <span class="ot">&lt;-</span> forest_plot_top20_interaction <span class="sc">|&gt;</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(gene)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>top20_gene_names</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] AtPDC1  ATNIG1  ADH     AtRGL3  LCR70   PMAT2   ATGPT2  ATGPT2  LTP    
+[10] LTI30   BBX16   ATFRO6  AtBAM3  CBP60G  BBX11   GBSS1   atnudt8 AtRbcX1
+[19] SAUR72  TN8    
+10555 Levels: (AT)SRC2 (AT)VAP 04C11 112A-2A 115D-4A 115J-4A ... ZYP1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>expr_annotated_gene_info <span class="ot">&lt;-</span> expr_annotated <span class="sc">|&gt;</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(genename, symbol) <span class="sc">|&gt;</span></span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">rename</span>(<span class="st">"gene"</span> <span class="ot">=</span> <span class="st">"symbol"</span>)</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>top20_gene_data <span class="ot">&lt;-</span> expr_annotated_gene_info <span class="sc">|&gt;</span></span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">%in%</span> top20_gene_names)</span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a>top20_gene_data_and_estimates <span class="ot">&lt;-</span> <span class="fu">left_join</span>(top20_gene_data,</span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>                                           forest_plot_top20_interaction,</span>
+<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a>                                           <span class="at">by =</span> <span class="st">"gene"</span>)</span>
+<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>top20_gene_data_and_estimates <span class="ot">&lt;-</span> top20_gene_data_and_estimates <span class="sc">|&gt;</span></span>
+<span id="cb56-13"><a href="#cb56-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(gene, genename, estimate, term) <span class="sc">|&gt;</span></span>
+<span id="cb56-14"><a href="#cb56-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(estimate)</span>
+<span id="cb56-15"><a href="#cb56-15" aria-hidden="true" tabindex="-1"></a>top20_gene_data_and_estimates</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 20 × 4
+   gene    genename                                               estimate term 
+   &lt;chr&gt;   &lt;chr&gt;                                                     &lt;dbl&gt; &lt;chr&gt;
+ 1 ATNIG1  Calcium-binding transcription factor involved in salt…    -18.8 cond…
+ 2 LCR70   Predicted to encode a PR (pathogenesis-related) prote…    -18.1 cond…
+ 3 PMAT2   &lt;NA&gt;                                                      -17.4 cond…
+ 4 ATGPT2  glucose6-Phosphate/phosphate transporter 2                -17.2 cond…
+ 5 LTP     Predicted to encode a PR (pathogenesis-related) prote…    -17.1 cond…
+ 6 BBX16   &lt;NA&gt;                                                      -16.4 cond…
+ 7 ATFRO6  Encodes a plasma membrane-located ferric chelate redu…    -16.0 cond…
+ 8 AtBAM3  Encodes a beta-amylase targeted to the chloroplast. T…    -15.7 cond…
+ 9 CBP60G  Encodes a calmodulin-binding protein CBP60g (calmodul…    -15.6 cond…
+10 GBSS1   &lt;NA&gt;                                                      -15.3 cond…
+11 TN8     &lt;NA&gt;                                                      -14.7 cond…
+12 SAUR72  &lt;NA&gt;                                                       14.7 cond…
+13 AtRbcX1 &lt;NA&gt;                                                       14.8 cond…
+14 atnudt8 &lt;NA&gt;                                                       15.3 cond…
+15 BBX11   &lt;NA&gt;                                                       15.4 cond…
+16 LTI30   Belongs to the dehydrin protein family, which contain…     16.5 cond…
+17 ATGPT2  glucose6-Phosphate/phosphate transporter 2                 17.4 cond…
+18 AtRGL3  DELLA subfamily member involved in GA signal transduc…     18.1 cond…
+19 ADH     Catalyzes the reduction of acetaldehyde using NADH as…     18.7 cond…
+20 AtPDC1  &lt;NA&gt;                                                       21.4 cond…</code></pre>
+</div>
+</div>
+<p>Some of these genes are known to be related to cold or other stresses! For example, LTI30 gene is overexpressed and it is annotated as related to freeze tolerance.</p>
+<p>ATGPT2 is greatly upregulated according to conditioncold:poly(time,&nbsp;3)1:tissueShoots model term, but greatly downregulated according to conditioncold:poly(time,&nbsp;3)2:tissueShoots model term. This can be explained by the fact that ATGPT2 might be upregulated at some times (driven by the positive first-basis effect) but downregulated at other times (driven by the negative second-basis effect).</p>
+</section>
+<section id="plot-predicted-trajectories-for-atgpt2-using-the-model" class="level4">
+<h4 class="anchored" data-anchor-id="plot-predicted-trajectories-for-atgpt2-using-the-model">Plot predicted trajectories for ATGPT2 using the model</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="co"># extract the model and original data for that gene</span></span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>ATGPT2_model <span class="ot">&lt;-</span> (nested_data <span class="sc">|&gt;</span></span>
+<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"ATGPT2"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(model_object))[[<span class="dv">1</span>]]</span>
+<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-6"><a href="#cb58-6" aria-hidden="true" tabindex="-1"></a>ATGPT2_data <span class="ot">&lt;-</span> (nested_data <span class="sc">|&gt;</span></span>
+<span id="cb58-7"><a href="#cb58-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> <span class="st">"ATGPT2"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb58-8"><a href="#cb58-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(data))[[<span class="dv">1</span>]]</span>
+<span id="cb58-9"><a href="#cb58-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-10"><a href="#cb58-10" aria-hidden="true" tabindex="-1"></a><span class="co"># create time grid within observed range (0 to 24 hrs) for the polynomial model to fit the polynomial time up to ^3</span></span>
+<span id="cb58-11"><a href="#cb58-11" aria-hidden="true" tabindex="-1"></a>time_grid <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">time =</span> <span class="fu">seq</span>(<span class="fu">min</span>(ATGPT2_data<span class="sc">$</span>time, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb58-12"><a href="#cb58-12" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">max</span>(ATGPT2_data<span class="sc">$</span>time, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb58-13"><a href="#cb58-13" aria-hidden="true" tabindex="-1"></a>                               <span class="at">length.out =</span> <span class="dv">200</span>))</span>
+<span id="cb58-14"><a href="#cb58-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-15"><a href="#cb58-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-16"><a href="#cb58-16" aria-hidden="true" tabindex="-1"></a><span class="co"># newdata grid for predictions: both conditions and tissues</span></span>
+<span id="cb58-17"><a href="#cb58-17" aria-hidden="true" tabindex="-1"></a>newdata <span class="ot">&lt;-</span> time_grid <span class="sc">|&gt;</span></span>
+<span id="cb58-18"><a href="#cb58-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">crossing</span>(<span class="at">condition =</span> <span class="fu">unique</span>(ATGPT2_data<span class="sc">$</span>condition), <span class="co"># cross condition (cold and control) against tissue (root and shoot) to create a matrix</span></span>
+<span id="cb58-19"><a href="#cb58-19" aria-hidden="true" tabindex="-1"></a>           <span class="at">tissue =</span> <span class="fu">unique</span>(ATGPT2_data<span class="sc">$</span>tissue))</span>
+<span id="cb58-20"><a href="#cb58-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-21"><a href="#cb58-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-22"><a href="#cb58-22" aria-hidden="true" tabindex="-1"></a><span class="co"># predict with se.fit to get CIs</span></span>
+<span id="cb58-23"><a href="#cb58-23" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(ATGPT2_model, <span class="at">newdata =</span> newdata, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb58-24"><a href="#cb58-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-25"><a href="#cb58-25" aria-hidden="true" tabindex="-1"></a>newdata <span class="ot">&lt;-</span> newdata <span class="sc">|&gt;</span></span>
+<span id="cb58-26"><a href="#cb58-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fit =</span> pred<span class="sc">$</span>fit,</span>
+<span id="cb58-27"><a href="#cb58-27" aria-hidden="true" tabindex="-1"></a>         <span class="at">se =</span> pred<span class="sc">$</span>se.fit,</span>
+<span id="cb58-28"><a href="#cb58-28" aria-hidden="true" tabindex="-1"></a>         <span class="at">lower =</span> fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> se,</span>
+<span id="cb58-29"><a href="#cb58-29" aria-hidden="true" tabindex="-1"></a>         <span class="at">upper =</span> fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> se)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>model_pred_experssion_ATGPT2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(newdata, <span class="fu">aes</span>(<span class="at">x =</span> time, </span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">y =</span> fit, </span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">color =</span> condition)) <span class="sc">+</span></span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, </span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymax =</span> upper, </span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a>                  <span class="at">fill =</span> condition), <span class="at">alpha =</span> <span class="fl">0.15</span>, <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> tissue) <span class="sc">+</span></span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">str_c</span>(<span class="st">"(AT)GPT2: model predicted expression over time (Shaded = 95% CI)"</span>),</span>
+<span id="cb59-10"><a href="#cb59-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Predicted expression"</span>, <span class="at">x =</span> <span class="st">"Time"</span>) <span class="sc">+</span></span>
+<span id="cb59-11"><a href="#cb59-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>model_pred_experssion_ATGPT2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-31-1.svg" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"../results/05_key_plot_1.png"</span>, model_pred_experssion_ATGPT2, <span class="at">width =</span> <span class="dv">8</span>, <span class="at">height =</span> <span class="dv">6</span>, <span class="at">dpi =</span> <span class="dv">300</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>So, it is not weird that ATGPT2 has both a large positive and negative estimate for the two polynomial times - the expression pattern is essentially opposite in shoots under cold and control conditions. There is very little difference in the gene expression over time in roots between conditions, however.</p>
+</section>
+</section>
+<section id="look-for-all-genes-involved-in-cold-andor-stress-according-to-gene-annotations" class="level3">
+<h3 class="anchored" data-anchor-id="look-for-all-genes-involved-in-cold-andor-stress-according-to-gene-annotations">Look for all genes involved in cold and/or stress according to gene annotations</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>key_words <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"cold"</span>, <span class="st">"stress"</span>)</span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a><span class="co"># use OR logic</span></span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a>cold_or_stress <span class="ot">&lt;-</span> expr_annotated_gene_info <span class="sc">|&gt;</span></span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">str_detect</span>(genename, <span class="fu">str_c</span>(key_words, <span class="at">collapse =</span> <span class="st">"|"</span>)))</span>
+<span id="cb63-6"><a href="#cb63-6" aria-hidden="true" tabindex="-1"></a>cold_or_stress</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 294 × 2
+   genename                                                                gene 
+   &lt;chr&gt;                                                                   &lt;chr&gt;
+ 1 bZIP17 appears to regulate transcription as part of a salt and osmotic… BZIP…
+ 2 Encodes a protein with cysteine proteinase inhibitor activity. Overexp… ATCY…
+ 3 A novel protein with a RING finger motif near the amino terminus. Nega… ESD6 
+ 4 Encodes a protein disulfide isomerase-like (PDIL) protein, a member of… ATPD…
+ 5 Encodes a medium to long-chain acyl-CoA oxidase. Catalyzes the first s… ACX1 
+ 6 Member of AtCBL (Calcineurin B-like Calcium Sensor Proteins) family. P… ATCB…
+ 7 The VERNALIZATION2 (VRN2) gene mediates vernalization and encodes a nu… VRN2 
+ 8 Encodes a cytosolic isoform of cytosolic O-acetylserine(thiol)lyase, a… ATCY…
+ 9 Homologous to pea OEP16 and barley pPORA (OEP16), a member of Arabidop… ATOE…
+10 Encodes a beta-amylase targeted to the chloroplast. Transgenic BMY8 RN… AtBA…
+# ℹ 284 more rows</code></pre>
+</div>
+</div>
+<p>There are 294 genes that are annotated with words “cold” or “stress”.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use AND logic</span></span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>cold_and_stress <span class="ot">&lt;-</span> expr_annotated_gene_info <span class="sc">|&gt;</span></span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">map_lgl</span>(genename, <span class="sc">~</span> <span class="fu">all</span>(<span class="fu">str_detect</span>(.x, key_words)))) </span>
+<span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a>cold_and_stress</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 32 × 2
+   genename                                                                gene 
+   &lt;chr&gt;                                                                   &lt;chr&gt;
+ 1 Encodes a protein with cysteine proteinase inhibitor activity. Overexp… ATCY…
+ 2 A novel protein with a RING finger motif near the amino terminus. Nega… ESD6 
+ 3 Member of AtCBL (Calcineurin B-like Calcium Sensor Proteins) family. P… ATCB…
+ 4 Encodes a WD-40 protein involved in histone deacetylation in response … HOS15
+ 5 Encodes a bifunctional protein that has 3'(2'),5'-bisphosphate nucleot… ALX8 
+ 6 A member of Arabidopsis BAG (Bcl-2-associated athanogene) proteins, pl… ATBA…
+ 7 Encodes one of five HVA22 homologs in Arabidopsis.  HVA22 is an ABA- a… ATHV…
+ 8 Encodes a protein with 40% similarity to calmodulin. Binds Ca(2+) and,… AtCM…
+ 9 Similar in sequence to DEAD-box RNA helicases. Binds RNA. Involved in … ATRH…
+10 Encodes a mitogen-activated kinase whose mRNA levels increase in respo… ATMA…
+# ℹ 22 more rows</code></pre>
+</div>
+</div>
+<p>32 genes that are annotated mentioning “cold” and “stress”.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="co"># find the names</span></span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>cold_and_stress_gene_names <span class="ot">&lt;-</span> cold_and_stress<span class="sc">$</span>gene</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="co"># plot model results as Forest plot for these 32 genes</span></span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>forest_cold_and_stress_plot <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span> </span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">%in%</span> cold_and_stress_gene_names) <span class="sc">|&gt;</span></span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate,</span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>             <span class="at">y =</span> <span class="fu">fct_reorder</span>(gene, estimate),</span>
+<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmin =</span> conf.low,</span>
+<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a>             <span class="at">xmax =</span> conf.high,</span>
+<span id="cb68-9"><a href="#cb68-9" aria-hidden="true" tabindex="-1"></a>             <span class="at">colour =</span> term)) <span class="sc">+</span></span>
+<span id="cb68-10"><a href="#cb68-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb68-11"><a href="#cb68-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">orientation =</span> <span class="st">"y"</span>) <span class="sc">+</span></span>
+<span id="cb68-12"><a href="#cb68-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb68-13"><a href="#cb68-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">17</span>) <span class="sc">+</span></span>
+<span id="cb68-14"><a href="#cb68-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position=</span><span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb68-15"><a href="#cb68-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">colour =</span> <span class="fu">guide_legend</span>(<span class="at">ncol =</span> <span class="dv">3</span>)) <span class="sc">+</span></span>
+<span id="cb68-16"><a href="#cb68-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Estimates (95% CIs)"</span>,</span>
+<span id="cb68-17"><a href="#cb68-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">""</span>,</span>
+<span id="cb68-18"><a href="#cb68-18" aria-hidden="true" tabindex="-1"></a>       <span class="at">colour =</span> <span class="st">"Model term"</span>,</span>
+<span id="cb68-19"><a href="#cb68-19" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Statistically significant gene expression estimates across control and cold condtions, </span><span class="sc">\n</span><span class="st">within roots and shoots, for known cold and stress annotated genes"</span>)</span>
+<span id="cb68-20"><a href="#cb68-20" aria-hidden="true" tabindex="-1"></a>forest_cold_and_stress_plot</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="05_analysis_1_files/figure-html/unnamed-chunk-35-1.svg" class="img-fluid figure-img" width="1152"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"../results/05_key_plot_2.png"</span>, forest_cold_and_stress_plot, <span class="at">width =</span> <span class="dv">12</span>, <span class="at">height =</span> <span class="dv">13</span>, <span class="at">dpi =</span> <span class="dv">300</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Some genes have multiple data entries for estimates. This is due to the model having up to three way interactions. All of these genes have statistically significantly different gene expression across tissues, however the estimate effect is among smallest. Some terms including poly(time, 3) have both positive and negative estimate effects. This is normal since the polynomial time terms assume linear, squared or cubic gene expression i.e.&nbsp;genes could be down or upregulated across time.</p>
+<section id="compare-the-genes-annotated-as-cold-or-stress-with-genes-found-by-the-model" class="level4">
+<h4 class="anchored" data-anchor-id="compare-the-genes-annotated-as-cold-or-stress-with-genes-found-by-the-model">Compare the genes annotated as cold or stress with genes found by the model</h4>
+<p>Are all the genes found via annotations statistically significantly up- or down-regulated according to the model?</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="co"># annotated gene names</span></span>
+<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">str_c</span>(<span class="st">"Annotated genes have "</span>, <span class="fu">length</span>(cold_and_stress_gene_names), <span class="st">" entries"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Annotated genes have 32 entries"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model significant gene names</span></span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>model_gene_names_df <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span> </span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(is_significant <span class="sc">==</span> <span class="st">"yes"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(gene)</span>
+<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a>model_gene_names <span class="ot">&lt;-</span> <span class="fu">as.character</span>(<span class="fu">unique</span>(model_gene_names_df<span class="sc">$</span>gene))</span>
+<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">str_c</span>(<span class="st">"Model genes have "</span>, <span class="fu">length</span>(model_gene_names), <span class="st">" entries"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Model genes have 7623 entries"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"Annotated  gene names that are present in the model are:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Annotated  gene names that are present in the model are:"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>present_genes <span class="ot">&lt;-</span> <span class="fu">intersect</span>(cold_and_stress_gene_names, model_gene_names)</span>
+<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>present_genes</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "ATCYSA"   "ATCBL1"   "HOS15"    "ATBAG7"   "ATHVA22E" "ATRH25"  
+ [7] "ATMAPK3"  "ATGRP8"   "ATXDH1"   "AtSFR6"   "EMB2770"  "ATCYS6"  
+[13] "AtGRP4"   "ATICE1"   "ATRH9"    "AtCOR47"  "ICE2"     "ATPTP1"  
+[19] "ERD14"    "AtCOR15A" "ATGRP7"   "FB"       "PER3"     "ERD7"    
+[25] "ATSAP18" </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>absent_genes <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(cold_and_stress_gene_names, model_gene_names)</span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>absent_genes</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ESD6"    "ALX8"    "AtCML24" "ATMKK2"  "ARAKIN"  "ATDDF1"  "MYB8"   </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>absent_genes_significance <span class="ot">&lt;-</span> data_estimates <span class="sc">|&gt;</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(gene <span class="sc">==</span> absent_genes) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: There were 2 warnings in `filter()`.
+The first warning was:
+ℹ In argument: `gene == absent_genes`.
+Caused by warning in `==.default`:
+! longer object length is not a multiple of shorter object length
+ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a>absent_genes_significance</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 9 × 8
+  gene    term        estimate p.value conf.low conf.high q.value is_significant
+  &lt;fct&gt;   &lt;chr&gt;          &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;         
+1 ALX8    tissueShoo…    0.262 6.69e-4    0.118     0.407       1 no            
+2 ALX8    poly(time,…    0.138 8.03e-1   -0.969     1.24        1 no            
+3 AtCML24 poly(time,…   -1.84  2.32e-2   -3.41     -0.263       1 no            
+4 AtCML24 poly(time,…    3.29  6.71e-3    0.960     5.62        1 no            
+5 ATDDF1  conditionc…    0.108 7.46e-1   -0.561     0.778       1 no            
+6 ATDDF1  conditionc…    9.65  6.02e-4    4.39     14.9         1 no            
+7 ATDDF1  conditionc…    5.21  1.65e-1   -2.23     12.6         1 no            
+8 MYB8    poly(time,…    0.694 5.07e-1   -1.40      2.79        1 no            
+9 MYB8    conditionc…   -1.12  3.52e-4   -1.70     -0.536       1 no            </code></pre>
+</div>
+</div>
+<p>Four out of seven genes are found in the data estimates dataframe and are not statistically significant. However, some genes are missing from the dataframe.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"genes missing from originally loaded dataframe are:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "genes missing from originally loaded dataframe are:"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>absent_genes[<span class="sc">!</span>(absent_genes <span class="sc">%in%</span> data_estimates<span class="sc">$</span>gene)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "ESD6"   "ATMKK2" "ARAKIN"</code></pre>
+</div>
+</div>
+<p>These three genes are missing from cleaned dataset due to their low variance. See 02_clean section 4. Thus, they are also not significantly up- or down-regulated.</p>
+</section>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
