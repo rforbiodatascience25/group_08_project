@@ -21,10 +21,6 @@ significant_genes <- read_tsv("../_raw/data/05_analysis_1_results.tsv")
 heat_data
 ```
 
-```{r}
-all(top50_genes$gene %in% significant_genes$gene)
-```
-
 # Filter and clean up relevant data
 
 ```{r}
