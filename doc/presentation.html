@@ -483,10 +483,10 @@
 <span id="cb4-13"><a href=""></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="step-02-clean" class="slide level2 scrollable">
-<h2>Step 02 – Clean</h2>
-<div style="font-size:0.49em;">
-<h3 id="filter-uninformative-genes">Filter Uninformative Genes</h3>
+<section id="step-02---clean" class="slide level2">
+<h2>Step 02 - Clean</h2>
+<div style="font-size:0.7em;">
+<h3 id="filter-uninformative-genes">Filter uninformative genes</h3>
 <div class="sourceCode" id="cb5" data-code-line-numbers="2,5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href=""></a>expr_filtered <span class="op">&lt;-</span> expr_annotated <span class="op">|&gt;</span></span>
 <span id="cb5-2"><a href=""></a>  <span class="bu">filter</span>(<span class="op">!</span>grepl(<span class="st">"^AFFX"</span>, probeid))</span>
 <span id="cb5-3"><a href=""></a></span>
@@ -501,13 +501,46 @@
 <span id="cb7-2"><a href=""></a>variance_cutoff <span class="op">&lt;-</span> quantile(gene_variance, <span class="fl">0.20</span>)</span>
 <span id="cb7-3"><a href=""></a>expr_filtered   <span class="op">&lt;-</span> expr_filtered[gene_variance <span class="op">&gt;</span> variance_cutoff, ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<div style="text-align:center;">
+<h3 class="fragment" id="now-our-data-is-tidy"><span style="font-size:0.8em;">Now, our data is tidy!</span></h3>
+<h3 class="fragment" id="and-ready-to-be-augmented"><span style="font-size:0.8em;">…and ready to be augmented!</span></h3>
+</div>
 </section>
-<section class="slide level2">
-
-</section>
-<section id="step-03---augment" class="slide level2">
-<h2>Step 03 - Augment</h2>
-<p>(placeholder slide)</p>
+<section id="step-3---augment" class="slide level2">
+<h2>Step 3 - Augment</h2>
+<div style="font-size:0.49em;">
+<h3 id="extract-expression-matrix">Extract expression matrix</h3>
+<div class="sourceCode" id="cb8" data-code-line-numbers="2,6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href=""></a>expr_only <span class="op">&lt;-</span> expr_filtered <span class="op">|&gt;</span> </span>
+<span id="cb8-2"><a href=""></a>  dplyr::select(starts_with(<span class="st">"GSM"</span>))</span>
+<span id="cb8-3"><a href=""></a></span>
+<span id="cb8-4"><a href=""></a>safe_symbols <span class="op">&lt;-</span> make.unique(expr_filtered$symbol)</span>
+<span id="cb8-5"><a href=""></a></span>
+<span id="cb8-6"><a href=""></a>expr_only <span class="op">&lt;-</span> expr_only <span class="op">|&gt;</span></span>
+<span id="cb8-7"><a href=""></a>  mutate(gene <span class="op">=</span> safe_symbols, .before <span class="op">=</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<h3 id="merge-expression-and-metadata">Merge expression and metadata</h3>
+<div class="sourceCode" id="cb9" data-code-line-numbers="2,6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href=""></a>expr_only_long <span class="op">&lt;-</span> expr_only <span class="op">|&gt;</span></span>
+<span id="cb9-2"><a href=""></a>  pivot_longer(cols <span class="op">=</span> starts_with(<span class="st">"GSM"</span>),</span>
+<span id="cb9-3"><a href=""></a>               names_to <span class="op">=</span> <span class="st">"GSM"</span>,</span>
+<span id="cb9-4"><a href=""></a>               values_to <span class="op">=</span> <span class="st">"expression"</span>)</span>
+<span id="cb9-5"><a href=""></a></span>
+<span id="cb9-6"><a href=""></a>expr_with_meta <span class="op">&lt;-</span> left_join(expr_only_long, sample_metadata, by <span class="op">=</span> <span class="st">"GSM"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<h3 id="reorder-columns">Reorder columns</h3>
+<div class="sourceCode" id="cb10" data-code-line-numbers="9"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href=""></a>expr_with_meta <span class="op">&lt;-</span> expr_with_meta <span class="op">|&gt;</span></span>
+<span id="cb10-2"><a href=""></a>  dplyr::select(</span>
+<span id="cb10-3"><a href=""></a>    GSM,</span>
+<span id="cb10-4"><a href=""></a>    title,</span>
+<span id="cb10-5"><a href=""></a>    condition,</span>
+<span id="cb10-6"><a href=""></a>    tissue,</span>
+<span id="cb10-7"><a href=""></a>    timepoint,</span>
+<span id="cb10-8"><a href=""></a>    replicate,</span>
+<span id="cb10-9"><a href=""></a>    dplyr::everything()</span>
+<span id="cb10-10"><a href=""></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<h3 id="add-averaged-replicate-values">Add averaged replicate values</h3>
+<div class="sourceCode" id="cb11" data-code-line-numbers="2,3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href=""></a>expr_with_meta <span class="op">&lt;-</span> expr_with_meta <span class="op">|&gt;</span></span>
+<span id="cb11-2"><a href=""></a>  group_by(condition, tissue, timepoint, gene) <span class="op">|&gt;</span></span>
+<span id="cb11-3"><a href=""></a>  mutate(average <span class="op">=</span> mean(expression)) <span class="op">|&gt;</span> <span class="co"># average is average expression over 2 replicates</span></span>
+<span id="cb11-4"><a href=""></a>  ungroup()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 <section id="step-04---describe" class="slide level2">
 <h2>Step 04 - Describe</h2>
