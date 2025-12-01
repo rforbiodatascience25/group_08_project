@@ -39,8 +39,8 @@ library(ath1121501.db) # Affymetrix Arabidopsis ATH1 annotation database
 #   - multiple metadata lines (starting with '!', '#', or '^')
 # Because of this, we read them line-by-line instead of loading as a table.
 
-file_5620 <- "../_raw/data/GSE5620_series_matrix.txt.gz" # CONTROL
-file_5621 <- "../_raw/data/GSE5621_series_matrix.txt.gz" # STRESS
+file_5620 <- "../_raw/GSE5620_series_matrix.txt.gz" # CONTROL
+file_5621 <- "../_raw/GSE5621_series_matrix.txt.gz" # STRESS
 
 #Read the files as plain text (line by line) so metadata can be parsed
 raw_5620 <- readLines(file_5620)
