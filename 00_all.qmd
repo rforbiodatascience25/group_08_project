@@ -1,26 +1,1691 @@
 ---
-title: "00_all"
+title: "01_load"
+author: "Eleni"
+format:
+  html:
+    output-dir: results
+editor: visual
+---
+
+## 0. Load required packages
+
+```{r}
+
+# Install required packages only if missing
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+required <- c("tidyverse", "stringr", "janitor", 
+              "AnnotationDbi", "ath1121501.db")
+
+for (pkg in required) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    BiocManager::install(pkg, update = FALSE, ask = FALSE)
+  }
+}
+
+library(tidyverse)
+library(stringr) # for string operations (pattern matching, cleaning text, etc.)
+library(janitor) # for cleaning column names and simple data cleaning functions, helps tidy data frames
+library(AnnotationDbi) # provides functions to map probe IDs to gene IDs toretrieve annotations and work with Bioconductor genomic databases.
+library(ath1121501.db) # Affymetrix Arabidopsis ATH1 annotation database
+```
+
+## 1. **Read Original Series Matrix Files (With Metadata)**
+
+```{r}
+#These GEO Series Matrix files contain:
+#   - an expression matrix (gene probes × samples)
+#   - multiple metadata lines (starting with '!', '#', or '^')
+# Because of this, we read them line-by-line instead of loading as a table.
+
+file_5620 <- "../_raw/GSE5620_series_matrix.txt.gz" # CONTROL
+file_5621 <- "../_raw/GSE5621_series_matrix.txt.gz" # STRESS
+
+#Read the files as plain text (line by line) so metadata can be parsed
+raw_5620 <- readLines(file_5620)
+raw_5621 <- readLines(file_5621)
+```
+
+## **2. Extract Sample Metadata (Titles + GSM IDs)**
+
+```{r}
+# This function extracts sample info (titles + GSM IDs) from the GEO file.
+# It now also looks inside each sample title and automatically assigns
+# a condition based on whether the title contains "Control" or "Cold".
+extract_metadata <- function(raw_lines) {
+  
+  # Find the line with all sample titles
+  title_line <- raw_lines[str_detect(raw_lines, "^!Sample_title")]
+  
+  # Find the line with all GSM IDs
+  gsm_line <- raw_lines[str_detect(raw_lines, "^!Sample_geo_accession")]
+  
+  # Remove the part before the first tab so we keep only values
+  title_clean <- str_remove(title_line, "^!Sample_title\t")
+  gsm_clean   <- str_remove(gsm_line, "^!Sample_geo_accession\t")
+  
+  # Split into individual entries
+  titles <- str_split(title_clean, "\t")[[1]]
+  gsm    <- str_split(gsm_clean,   "\t")[[1]]
+  
+  # Remove quotes
+  titles <- str_remove_all(titles, '"')
+  gsm    <- str_remove_all(gsm, '"')
+  
+  # Determine condition from the title text
+  # We convert titles to lowercase to make matching easier.
+  condition <- case_when(
+    str_detect(tolower(titles), "control") ~ "control",
+    str_detect(tolower(titles), "cold")    ~ "cold",
+    TRUE ~ "unknown"   # fallback if neither appears
+  )
+  
+  # Return the metadata table
+  tibble(GSM = gsm, title = titles, condition = condition)
+}
+
+# Extract metadata from each dataset
+meta_5620 <- extract_metadata(raw_5620)
+meta_5621 <- extract_metadata(raw_5621)
+
+```
+
+## 3. **Parse Metadata Into Structured Variables**
+
+```{r}
+# This function extracts useful pieces of information from the sample title.
+# Each title contains the tissue type, the timepoint, and the replicate number.
+# We pull these out using pattern matching.
+parse_title <- function(df) {
+  df |>
+    mutate(
+      # Extract whether the sample is from Shoots or Roots
+      tissue = str_extract(title, "(Shoots|Roots)"),
+
+      # Extract the timepoint (e.g., "0h", "6.0h")
+      timepoint = str_extract(title, "[0-9.]+h"),
+
+      # Extract the replicate number (e.g., "Rep1")
+      replicate = str_extract(title, "Rep[0-9]")
+      
+      # No need for a treatment column here,
+      # because we already have a clean 'condition' column.
+    )
+}
+
+# Apply the parsing function to the metadata for each dataset
+meta_5620 <- parse_title(meta_5620)
+meta_5621 <- parse_title(meta_5621)
+
+# Combine the two metadata tables into one complete table
+sample_metadata <- bind_rows(meta_5620, meta_5621)
+
+```
+
+## 4. Save clean metadata table
+
+```{r}
+# Ensure _raw/data directory exists
+if (!dir.exists("../_raw/data")) dir.create("../_raw/data", recursive = TRUE)
+
+# Save clean metadata as TSV (recommended for bioinformatics)
+readr::write_tsv(sample_metadata, "../_raw/data/01_dat_load_1.tsv")
+
+
+```
+
+## 5. **Load Expression Matrices (numeric table only)**
+
+```{r}
+# These two lines read the numeric expression matrices from the original GEO Series Matrix files. By using comment.char = "!", we tell R to skip all lines starting with "!", which are metadata lines (we have already extracted what we need).
+# Only the actual expression table (probe IDs + expression values) is loaded.
+# row.names = 1 sets the first column (the probe IDs) as row names.
+
+gse5620 <- read.delim(file_5620, comment.char = "!", row.names = 1)
+gse5621 <- read.delim(file_5621, comment.char = "!", row.names = 1)
+
+# Combine the two datasets side by side.
+# The rows are probe IDs, so cbind() matches them automatically.
+# This gives us one full expression matrix with all samples.
+expr_all <- cbind(gse5620, gse5621)
+
+```
+
+## **6. Annotate Probe IDs → Gene Symbols**
+
+```{r}
+# 1. Get annotation
+probe_to_gene <- AnnotationDbi::select(
+  ath1121501.db,
+  keys = rownames(expr_all),
+  columns = c("PROBEID", "GENENAME", "SYMBOL"),
+  keytype = "PROBEID"
+)
+
+# 2. Clean column names → probeid, genename, symbol
+probe_to_gene <- janitor::clean_names(probe_to_gene)
+
+# 3. Remove duplicated probe IDs (rare but safe)
+probe_to_gene <- dplyr::distinct(probe_to_gene, probeid, .keep_all = TRUE)
+
+# 4. Prepare expression matrix with probeid column
+expr_all2 <- expr_all |>
+  as.data.frame() |>
+  tibble::rownames_to_column("probeid")    # <- uses SAME NAME as annotation
+
+# 5. Join directly (no rename needed)
+expr_annotated <- dplyr::left_join(
+  probe_to_gene,
+  expr_all2,
+  by = "probeid"
+)
+
+```
+
+## 7. **Save Annotated Expression Matrix**
+
+```{r}
+# Save the fully annotated expression matrix before filtering.
+# This file includes:
+#   - probe IDs
+#   - gene symbols
+#   - gene names
+#   - expression values for all 60 samples
+#
+# This serves as a complete reference version of the dataset.
+# The filtered version (created in Step 8) will be used for downstream analysis (PCA, differential expression, clustering, heatmaps, etc.).
+
+readr::write_tsv(expr_annotated, "../_raw/data/01_dat_load_2.tsv")
+```
+
+---
+title: "02_clean"
+author: "Eleni"
+format:
+  html:
+    output-dir: results
+editor: visual
+---
+
+## 0. Load packages
+
+```{r}
+library("tidyverse")
+library("janitor")
+```
+
+## 1. Load data produced in 01_load
+
+```{r}
+sample_metadata <- readr::read_tsv("../_raw/data/01_dat_load_1.tsv")
+expr_annotated  <- readr::read_tsv("../_raw/data/01_dat_load_2.tsv")
+```
+
+## 2. Filter Uninformative Genes
+
+```{r}
+# a. Remove Affymetrix control probes (start with "AFFX")
+# These are technical control probes and do not represent real genes.
+expr_filtered <- expr_annotated |>
+  filter(!grepl("^AFFX", probeid))
+
+# b. Remove probes without a valid gene symbol 
+# Probes with no gene symbol cannot be interpreted biologically.
+expr_filtered <- expr_filtered |>
+  filter(!is.na(symbol) & symbol != "")
+```
+
+## 3. Log2 transform expression
+
+```{r}
+# Identify expression columns (all GSM samples)
+gsm_cols <- grepl("^GSM", names(expr_filtered))
+
+# Log2 transform IN PLACE: expr_filtered is now log2-normalised
+expr_filtered[ , gsm_cols] <- log2(expr_filtered[ , gsm_cols] + 1)
+
+# Numeric matrix of expression only
+expr_numeric <- expr_filtered[ , gsm_cols]
+```
+
+## 4. Remove low-variance genes
+
+```{r}
+# Remove low-variance genes (bottom 20%)
+# Genes with very little variation across samples are uninformative and add noise.
+gene_variance <- apply(expr_numeric, 1, var)
+
+# Cutoff at 20th percentile
+variance_cutoff <- quantile(gene_variance, 0.20)
+
+# Keep only genes with variance above cutoff
+expr_filtered <- expr_filtered[gene_variance > variance_cutoff, ]
+```
+
+## 5. Save cleaned + normalized expression matrix
+
+```{r}
+# This dataset contains only informative genes:
+#   - no control probes (AFFX)
+#   - no unannotated probes
+#   - only genes with meaningful variation across samples
+#   -log2 normalized values
+# This is the dataset that should be used for all downstream analyses:
+
+readr::write_tsv(expr_filtered, "../_raw/data/02_dat_clean.tsv")
+```
+
+---
+title: "03_augment"
+author: "Eleni"
+format:
+  html:
+    output-dir: results
+editor: visual
+---
+
+## 0. Load packages
+
+```{r}
+library("tidyverse")
+library("janitor")
+```
+
+## 1. Load cleaned data
+
+```{r}
+expr_filtered <- readr::read_tsv("../_raw/data/02_dat_clean.tsv")
+sample_metadata <- readr::read_tsv("../_raw/data/01_dat_load_1.tsv")
+```
+
+## 2. Extract expression matrix
+
+```{r}
+# Keep only GSM expression columns i.e. the actual sample-level expression values for each sample.
+expr_only <- expr_filtered |> 
+  dplyr::select(starts_with("GSM"))
+
+# The same gene symbol can appear multiple times because multiple probes may map to the same gene. make.unique() adds suffixes (".1", ".2", etc.) to ensure row names are unique and valid for downstream analyses.
+safe_symbols <- make.unique(expr_filtered$symbol)
+
+# Assign the unique gene symbols as row names of the expression matrix.
+expr_only <- expr_only |>
+  mutate(gene = safe_symbols, .before = 1)
+```
+
+## 3. Merge expression and meta data
+
+```{r}
+expr_only_long <- expr_only |>
+  pivot_longer(cols = starts_with("GSM"),
+               names_to = "GSM",
+               values_to = "expression")
+
+expr_with_meta <- left_join(expr_only_long, sample_metadata, by = "GSM")
+```
+
+## 4. Reorder columns
+
+```{r}
+# Reorder the final dataset so metadata columns appear first, followed by gene expression values and averaged values.
+expr_with_meta <- expr_with_meta |>
+  dplyr::select(
+    GSM,
+    title,
+    condition,
+    tissue,
+    timepoint,
+    replicate,
+    dplyr::everything()
+  )
+```
+
+## 5. Add averaged replicate values
+
+```{r}
+expr_with_meta <- expr_with_meta |>
+  group_by(condition, tissue, timepoint, gene) |>
+  mutate(average = mean(expression)) |> # average is average expression over 2 replicates
+  ungroup()
+```
+
+## 6. Save final dataset
+
+```{r}
+readr::write_tsv(expr_with_meta, "../_raw/data/03_dat_aug.tsv")
+```
+
+## 7. Dataset for PCA analysis
+
+```{r}
+data_for_PCA <- expr_with_meta |>
+  mutate(sample_id = paste(
+    .data[["condition"]],
+    .data[["tissue"]],
+    .data[["timepoint"]],
+    .data[["replicate"]],
+    sep = "_"
+  ))
+
+
+data_for_PCA_wide <- data_for_PCA |>
+  dplyr::select(sample_id, gene, condition, tissue, timepoint, expression) |>
+  pivot_wider(names_from = gene,
+              values_from = expression)
+
+readr::write_tsv(data_for_PCA_wide, "../_raw/data/03_dat_aug_2.tsv")
+```
+
+---
+title: "04_describe"
+author: "Eleni&Dana"
+format:
+  html:
+    output-dir: results
+editor: visual
+---
+
+## 0. Load packages
+
+```{r}
+library("tidyverse")
+library("janitor")
+```
+
+## 1. Load final dataset
+
+```{r}
+# Final enriched dataset created in previous steps
+expr_with_meta <- readr::read_tsv("../_raw/data/03_dat_aug.tsv")
+
+# Annotated table (used later for gene lookup)
+expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load_2.tsv")
+
+```
+
+## 2. Overview of dataset structure
+
+```{r}
+# Look at the overall structure
+glimpse(expr_with_meta)
+
+# Number of samples
+n_samples <- nrow(expr_with_meta)
+
+# Number of genes (raw GSM columns)
+gene_cols <- grep("^GSM", names(expr_with_meta), value = TRUE)
+n_genes <- length(gene_cols)
+
+# Print basic information
+tibble(
+  total_samples = n_samples,
+  total_genes = n_genes
+)
+```
+
+## 3. Sample counts per condition, tissue and timepoint
+
+```{r}
+expr_with_meta |> count(condition)
+expr_with_meta |> count(tissue)
+expr_with_meta |> count(timepoint)
+
+```
+
+## 4. Combined table (condition × tissue × timepoint)
+
+```{r}
+expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  arrange(condition, tissue, timepoint)
+
+```
+
+## 7. Plot: **Sample Distribution by Condition × Timepoint × Tissue**
+
+```{r}
+plot_1 <- expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  ggplot(aes(x = timepoint, y = n, fill = condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ tissue) +
+  labs(
+    title = "Sample Distribution by Condition, Timepoint, and Tissue",
+    x = "Timepoint",
+    y = "Number of Samples",
+    fill = "Condition"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave("../results/04_key_plot_1.png", plot_1, width = 8, height = 5, dpi = 300)
+
+plot_1
+```
+
+## 6. Prepare factors for plotting
+
+```{r}
+expr_with_meta <- expr_with_meta |>
+  mutate(
+    gene = as.factor(gene),
+    condition = factor(condition, levels = c("control", "cold")),
+    tissue = factor(tissue, levels = c("Roots", "Shoots")),
+    timepoint = factor(timepoint,
+        levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h",
+                   "4.0h", "6.0h", "12.0h", "24.0h")),
+    replicate = as.factor(replicate)
+  )
+```
+
+## 7. Plot expression for one example gene: (AT)SRC2
+
+```{r}
+# Filter and prepare data
+plot2_data <- expr_with_meta |>
+  filter(gene == "(AT)SRC2") |>
+  distinct(average, .keep_all = TRUE)
+```
+
+## A. Compare expression between tissues (within conditions)
+
+```{r}
+plot2 <- ggplot(plot2_data,
+                aes(x = timepoint, y = average, color = tissue)) +
+  geom_point() +
+  facet_wrap(~condition) +
+  ggtitle("Average log10 expression of (AT)SRC2 between tissues and conditions") +
+  ylab("Log10 expression")
+
+plot2
+
+ggsave("../results/04_key_plot_2.png", plot2, width = 8, height = 5, dpi = 300)
+
+```
+
+## B. Compare expression between conditions (within tissues)
+
+```{r}
+plot3 <- ggplot(plot2_data,
+                aes(x = timepoint, y = average, color = condition)) +
+  geom_point() +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 within tissues across conditions") +
+  ylab("Log10 expression")
+
+plot3
+
+ggsave("../results/04_key_plot_3.png", plot3, width = 8, height = 5, dpi = 300)
+
+```
+
+## 8. What is known about (AT)SRC2?
+
+```{r}
+expr_annotated |>
+  dplyr::select(genename, symbol) |>
+  filter(symbol == "(AT)SRC2")
+```
+
+## 9. Plot five random genes
+
+```{r}
+five_genes <- sample(unique(expr_with_meta$gene), 5)
+
+data_plot4 <- expr_with_meta |> filter(gene %in% five_genes)
+
+```
+
+```{r}
+plot4 <- ggplot(data_plot4,
+                aes(x = timepoint, y = average, color = gene)) +
+  geom_point() +
+  facet_wrap(condition ~ tissue) +
+  ggtitle("Average log10 expression of five randomly selected genes") +
+  ylab("Log10 expression")
+
+plot4
+ggsave("../results/04_key_plot_4.png", plot4, width = 8, height = 5, dpi = 300)
+```
+
+---
+title: "Group08 - 05_analysis_1"
+subtitle: "lm() via broom"
+author: "Dana"
 format: html
 editor: visual
 ---
 
-## Quarto
+# Getting ready
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+## Load packages
 
 ```{r}
-1 + 1
+library("tidyverse")
+library("purrr")
+library("broom")
+library("stringr")
 ```
 
-You can add options to executable code like this
+## Load data
 
 ```{r}
-#| echo: false
-2 * 2
+data <- read_tsv("../_raw/data/03_dat_aug.tsv")
+expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load_2.tsv")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+## Prepare the data
+
+```{r}
+# set to factors and set levels in the preferred order
+data$gene <- as.factor(data$gene)
+data$condition <- factor(data$condition,
+                         levels = c("control", "cold"))
+data$tissue <- factor(data$tissue,
+                      levels = c("Roots", "Shoots"))
+data$timepoint <- factor(data$timepoint,
+                            levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h", 
+                                       "4.0h","6.0h", "12.0h", "24.0h"))
+data$replicate <- as.factor(data$replicate)
+
+# remove h in timepoints and convert to numeric
+data$time <- as.numeric(sub("h", "", data$timepoint))
+
+```
+
+# Small test - applying linear model to one gene (e.g. (AT)SRC2)
+
+## Get the data for (AT)SRC2 only
+
+```{r}
+small_test_ATSRC2 <- data |>  
+  filter(gene == "(AT)SRC2")
+small_test_ATSRC2
+```
+
+### Plot ATSRC2
+
+```{r}
+ggplot(small_test_ATSRC2, aes(x = time,
+                              y = expression,
+                              color = condition)) +
+  geom_point() + 
+  geom_line(aes(y = average)) +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 between both conditions, in both tissues") +
+  ylab("Log10 expression")
+```
+
+## Apply linear model to (AT)SRC2
+
+```{r}
+# lm for ATSRC2 expression explained by condition, tissue type and timepoint
+model_ATSRC2 <- small_test_ATSRC2 |>
+  group_by(condition, tissue, timepoint) |>
+  lm(expression ~ condition * tissue * timepoint, data = _)
+print("lm() output:")
+model_ATSRC2 |>
+  pluck("coefficients")
+
+
+print("summary() output:")
+model_ATSRC2 |>
+  summary()
+```
+
+At intercept, i.e. control, roots at 0 hrs, (AT)SRC2 expression is statistically significantly different from 0. However, this is not biologically meaningful as gene expression is expected.
+
+There are missing values for the cold condition at timepoints 0 and 0.25 hrs for both roots and shoots. This affects the model and makes it unbalanced and thus some effects are confounded.
+
+Control and cold gene expression is statistically significant (p\<0.05), as is root vs shoot tissue gene expression (p\<0.05). However, not all timepoints are statistically significantly different. This is for one-way interactions and thus the effects for tissues, timepoints and conditions are pooled.
+
+The three-way interactions give best biologically significant results since each condition is taken into account. However, as some data is missing, some interactions cannot be estimated (hence NA). Only two sets of interactions have p\<0.05 and thus gene expression is statistically significantly different. These are control vs cold & root vs shoot at timepoint 1 hr vs 0 hrs. However, this highlights that ANOVA is not suitable for this data. Need to test a time-series model, in order to test whether cold vs control alters the *shape* of the time curve, within each tissue (root / shoot).
+
+## Polynomial time model for (AT)SRC2
+
+### Create model
+
+```{r}
+model <- lm(expression ~ condition * poly(time, 3) * tissue, data = small_test_ATSRC2)
+summary(model)
+```
+
+Polynomial time allows to test whether gene expression changes over time in a smooth way, and whether that curve is different between conditions and tissues.
+
+Since p-value for conditioncold is below 0.05, there is a statistically significant difference between control and cold conditions [at time 0 hrs]{.underline}. Since poly(time, 3)1 and 2 are also statistically significant (p\<0.05), the gene expression between conditions across time is also different, i.e. there is a curve / pattern to how the gene expression occurs over time. Additionally, since conditioncold:poly(time, 3)1 to 3 are all significant, the two conditions have different curves over time.
+
+Since tissueShoots is significant, there is a difference in gene expressions between roots and shoots at [time 0 hrs]{.underline}. However, there is weak evidence that the gene expression dynamics are different in roots and shoots at different timepoints, since poly(time, 3)1:tissueShoots (until poly 3) are not all statistically significant i.e. p-value is not \<0.05 for all 3 polynomials.
+
+Since all three-way interaction terms are non-significant (p\>0.05), there is no statistically significant interactions between condition x tissue x time. Therefore, while the cold changes the time trend, and shoots vs roots differ slightly in gene expression patterns, the cold condition does not affect shoots differently from roots in terms of time response.
+
+### Plot model
+
+```{r}
+small_test_ATSRC2$fitted <- predict(model)
+
+plot4 <- ggplot(small_test_ATSRC2, 
+                aes(x = time, 
+                    y = expression, 
+                    color = condition)) +
+  geom_point() +
+  geom_line(aes(y = fitted)) +
+  facet_wrap(~ tissue) +
+  ylab("Gene expession (log10 adjusted)") +
+  xlab("Time (hrs)") +
+  ggtitle("(AT)SRC2 experssion (dots) and its polynomial model prediction (curve)\n across conditions and tissue types")
+
+plot4
+```
+
+## Applying polynomial model to all genes via nested application of lm()
+
+## Create nested dataframe
+
+```{r}
+nested_data <- data |>
+  group_by(gene) |>
+  nest() |> 
+  ungroup()
+
+nested_data
+```
+
+```{r}
+# check
+nested_data |>
+  filter(gene == "(AT)SRC2") |> 
+  pull(data)
+```
+
+## Apply model_object to nested data
+
+```{r}
+nested_data <- nested_data |> 
+  group_by(gene) |> 
+  mutate(model_object = map(.x = data,
+                            .f = ~lm(formula = expression ~ condition * poly(time, 3) * tissue, data = .x)))
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "(AT)SRC2") |> 
+  pull(model_object)
+```
+
+```{r}
+# tidy using broom
+nested_data <- nested_data |> 
+  mutate(model_object_tidy = map(.x = model_object,
+                                 .f = ~tidy(x = .x,
+                                            conf.int = TRUE,
+                                            conf.level = 0.95)))
+
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "(AT)SRC2") |> 
+  pull(model_object_tidy)
+```
+
+```{r}
+# unpack the nested models
+data_estimates <- nested_data |>
+  unnest(model_object_tidy) |> 
+  filter(term != "(Intercept)") |> 
+  dplyr::select(gene, term, estimate, p.value, conf.low, conf.high) |> 
+  ungroup()
+data_estimates
+```
+
+```{r}
+# add q value
+data_estimates <- data_estimates |>
+  mutate(q.value = p.adjust(p.value),
+         is_significant = case_when(q.value <= 0.05 ~ "yes",
+                                    q.value > 0.05 ~ "no"))
+data_estimates
+```
+
+## Select statistically significant genes
+
+```{r}
+significant_data_estimates <- data_estimates |>
+  filter(is_significant == "yes") |> 
+  dplyr::select(gene, term, estimate, p.value, q.value)
+significant_data_estimates
+```
+
+```{r}
+raw_data <- nested_data |> dplyr::select(gene, data) |> unnest(data)
+
+annotated_sig_results <- raw_data |>
+  left_join(data_estimates |> filter(is_significant == "yes"),
+            by = "gene",
+            relationship = "many-to-many")
+
+readr::write_tsv(annotated_sig_results, "../_raw/data/05_analysis_1_results.tsv")
+```
+
+# Forest plot
+
+## Plot allllll the genes
+
+```{r}
+forest_plot <- data_estimates |> 
+  filter(is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates \nacross control and cold condtions, within roots and shoots")
+forest_plot
+```
+
+Too many genes!
+
+```{r}
+# check dimensions
+dim(significant_data_estimates)
+```
+
+There are 9980 entries to be plotted. That's too many for a Forest plot. Better investigate heatmaps, PCA or just plot top 20 in terms of absolute estimate.
+
+## Try plotting p\<0.01 to see if there are less genes and plot is more interpretable
+
+```{r}
+#| fig-height: 20 # can change this to like 600 to see all the genes <3
+#| fig-width: 10
+# instead of plotting q value <0.05, check 0.01:
+forest_plot_q_value <- data_estimates |>
+  filter(q.value < 0.01 & is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates \nacross normal and stressed condtions")
+forest_plot_q_value
+```
+
+```{r}
+dim(data_estimates |>
+  filter(q.value < 0.01 & is_significant == "yes"))
+```
+
+Still too big, there are 9099 rows!
+
+## Try top 20 coefficients in Forest plot
+
+### All coefficients allowed
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+# choose top 20 terms by absolute effect size i.e. not top 20 genes, but 20 coefficients
+# this allows to find which model terms have the strongest effects across all genes
+topN <- 20
+
+forest_plot_top20 <- data_estimates |>
+  filter(is_significant == "yes") |>
+  slice_max(order_by = abs(estimate), n = topN) |>
+  ggplot(aes(
+    x = estimate,
+    y = fct_reorder(gene, estimate),
+    xmin = conf.low,
+    xmax = conf.high,
+    colour = term
+  )) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position="bottom")+
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates across control and \ncold conditions, within roots and shoots, for genes of top 20 highest \nabsolute estimate value",
+       colour = "Model terms") 
+
+forest_plot_top20
+```
+
+Most of the genes with the greatest estimate effect shows the gene is upregulated with time in the cold condition (conditioncold:poly(time, 3)1).
+
+### Plot all genes for cold × time × tissue interaction (i.e. limit the allowed coefficients)
+
+```{r}
+# choose the three way interaction 
+cold_time_tissue <- data_estimates |>
+  filter(str_detect(term, "conditioncold:poly\\(time, 3\\).*:tissue")) # * refers to 1, 2 and 3 polynomials
+
+# filter only the statistically significant ones
+cold_time_tissue_sig <- cold_time_tissue |>
+  filter(is_significant == "yes")
+```
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+
+forest_plot_cold_time_tissue <- cold_time_tissue_sig |>
+  ggplot(aes(
+    x = estimate,
+    y = fct_reorder(gene, estimate),
+    xmin = conf.low,
+    xmax = conf.high,
+    colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across all genes",
+       colour = "Model term")
+
+forest_plot_cold_time_tissue
+```
+
+Many genes! most common colour is that for conditioncold:poly(time, 3)1:tissueShoots so it is most commonly a statistically significant term in the model.
+
+#### Find genes affected the most by the cold × time × tissue interaction
+
+```{r}
+forest_plot_top20_interaction <- cold_time_tissue_sig |>
+  slice_max(order_by = abs(estimate), n = 20)
+forest_plot_top20_interaction
+```
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+forest_plot_cold_time_tissue_top20 <- forest_plot_top20_interaction |>
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high,
+             colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across top 20 genes",
+       colour = "Model term")
+
+forest_plot_cold_time_tissue_top20
+```
+
+#### Find the top 20 genes' roles and their estimate effects
+
+```{r}
+top20_gene_names <- forest_plot_top20_interaction |>
+  pull(gene)
+top20_gene_names
+```
+
+```{r}
+expr_annotated_gene_info <- expr_annotated |>
+  dplyr::select(genename, symbol) |>
+  dplyr::rename("gene" = "symbol")
+
+top20_gene_data <- expr_annotated_gene_info |>
+  filter(gene %in% top20_gene_names)
+
+top20_gene_data_and_estimates <- left_join(top20_gene_data,
+                                           forest_plot_top20_interaction,
+                                           by = "gene")
+  
+top20_gene_data_and_estimates <- top20_gene_data_and_estimates |>
+  dplyr::select(gene, genename, estimate, term) |>
+  arrange(estimate)
+top20_gene_data_and_estimates
+```
+
+Some of these genes are known to be related to cold or other stresses! For example, LTI30 gene is overexpressed and it is annotated as related to freeze tolerance.
+
+ATGPT2 is greatly upregulated according to conditioncold:poly(time, 3)1:tissueShoots model term, but greatly downregulated according to conditioncold:poly(time, 3)2:tissueShoots model term. This can be explained by the fact that ATGPT2 might be upregulated at some times (driven by the positive first-basis effect) but downregulated at other times (driven by the negative second-basis effect).
+
+#### Plot predicted trajectories for ATGPT2 using the model
+
+```{r}
+# extract the model and original data for that gene
+ATGPT2_model <- (nested_data |>
+  filter(gene == "ATGPT2") |>
+  pull(model_object))[[1]]
+
+ATGPT2_data <- (nested_data |>
+  filter(gene == "ATGPT2") |>
+  pull(data))[[1]]
+
+# create time grid within observed range (0 to 24 hrs) for the polynomial model to fit the polynomial time up to ^3
+time_grid <- tibble(time = seq(min(ATGPT2_data$time, na.rm = TRUE),
+                               max(ATGPT2_data$time, na.rm = TRUE),
+                               length.out = 200))
+
+
+# newdata grid for predictions: both conditions and tissues
+newdata <- time_grid |>
+  crossing(condition = unique(ATGPT2_data$condition), # cross condition (cold and control) against tissue (root and shoot) to create a matrix
+           tissue = unique(ATGPT2_data$tissue))
+
+
+# predict with se.fit to get CIs
+pred <- predict(ATGPT2_model, newdata = newdata, se.fit = TRUE)
+
+newdata <- newdata |>
+  mutate(fit = pred$fit,
+         se = pred$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+```
+
+```{r}
+model_pred_experssion_ATGPT2 <- ggplot(newdata, aes(x = time, 
+                    y = fit, 
+                    color = condition)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = lower, 
+                  ymax = upper, 
+                  fill = condition), alpha = 0.15, color = NA) +
+  facet_wrap(~ tissue) +
+  labs(title = str_c("(AT)GPT2: model predicted expression over time (Shaded = 95% CI)"),
+       y = "Predicted expression", x = "Time") +
+  theme_minimal(base_size = 14)
+
+model_pred_experssion_ATGPT2
+
+ggsave("../results/05_key_plot_1.png", model_pred_experssion_ATGPT2, width = 8, height = 6, dpi = 300)
+```
+
+So, it is not weird that ATGPT2 has both a large positive and negative estimate for the two polynomial times - the expression pattern is essentially opposite in shoots under cold and control conditions. There is very little difference in the gene expression over time in roots between conditions, however.
+
+### Look for all genes involved in cold and/or stress according to gene annotations
+
+```{r}
+key_words <- c("cold", "stress")
+
+# use OR logic
+cold_or_stress <- expr_annotated_gene_info |>
+  filter(str_detect(genename, str_c(key_words, collapse = "|")))
+cold_or_stress
+```
+
+There are 294 genes that are annotated with words "cold" or "stress".
+
+```{r}
+# use AND logic
+cold_and_stress <- expr_annotated_gene_info |>
+  filter(map_lgl(genename, ~ all(str_detect(.x, key_words)))) 
+cold_and_stress
+```
+
+32 genes that are annotated mentioning "cold" and "stress".
+
+```{r}
+# find the names
+cold_and_stress_gene_names <- cold_and_stress$gene
+```
+
+```{r}
+#| fig-height: 14
+#| fig-width: 12
+# plot model results as Forest plot for these 32 genes
+forest_cold_and_stress_plot <- data_estimates |> 
+  filter(is_significant == "yes") |> 
+  filter(gene %in% cold_and_stress_gene_names) |>
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high,
+             colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 17) +
+  theme(legend.position="bottom") +
+  guides(colour = guide_legend(ncol = 3)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       colour = "Model term",
+       title = "Statistically significant gene expression estimates across control and cold condtions, \nwithin roots and shoots, for known cold and stress annotated genes")
+forest_cold_and_stress_plot
+ggsave("../results/05_key_plot_2.png", forest_cold_and_stress_plot, width = 12, height = 13, dpi = 300)
+```
+
+Some genes have multiple data entries for estimates. This is due to the model having up to three way interactions. All of these genes have statistically significantly different gene expression across tissues, however the estimate effect is among smallest. Some terms including poly(time, 3) have both positive and negative estimate effects. This is normal since the polynomial time terms assume linear, squared or cubic gene expression i.e. genes could be down or upregulated across time.
+
+#### Compare the genes annotated as cold or stress with genes found by the model
+
+Are all the genes found via annotations statistically significantly up- or down-regulated according to the model?
+
+```{r}
+# annotated gene names
+print(str_c("Annotated genes have ", length(cold_and_stress_gene_names), " entries"))
+
+# model significant gene names
+model_gene_names_df <- data_estimates |> 
+  filter(is_significant == "yes") |>
+  dplyr::select(gene)
+
+model_gene_names <- as.character(unique(model_gene_names_df$gene))
+
+print(str_c("Model genes have ", length(model_gene_names), " entries"))
+
+print("Annotated  gene names that are present in the model are:")
+present_genes <- intersect(cold_and_stress_gene_names, model_gene_names)
+present_genes
+
+```
+
+```{r}
+absent_genes <- setdiff(cold_and_stress_gene_names, model_gene_names)
+absent_genes
+
+absent_genes_significance <- data_estimates |>
+  filter(gene == absent_genes) 
+absent_genes_significance
+```
+
+Four out of seven genes are found in the data estimates dataframe and are not statistically significant. However, some genes are missing from the dataframe.
+
+```{r}
+print("genes missing from originally loaded dataframe are:")
+absent_genes[!(absent_genes %in% data_estimates$gene)]
+```
+
+These three genes are missing from cleaned dataset due to their low variance. See 02_clean section 4. Thus, they are also not significantly up- or down-regulated.
+
+---
+title: "Group08 - 05_analysis_1"
+subtitle: "Heat map plot"
+author: "Vakare"
+format:
+    html:
+      output-dir: results
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+```
+
+## Load data
+
+```{r}
+heat_data <- read_tsv("../_raw/data/03_dat_aug.tsv")
+significant_genes <- read_tsv("../_raw/data/05_analysis_1_results.tsv")
+
+heat_data
+```
+
+# Filter and clean up relevant data
+
+```{r}
+filtered_heat_data <- heat_data |>
+  filter(replicate == "Rep1") |>
+  dplyr::select(gene, timepoint, condition, tissue, average) |>
+  dplyr::rename(`timepoint [h]` = timepoint) |>                
+  mutate(
+    `timepoint [h]` = as.numeric(gsub("h", "", `timepoint [h]`))
+    )
+
+filtered_heat_data
+```
+
+## Calculate average expression per tissue and gene in control samples at 0h (Control baseline)
+
+```{r}
+control_means <- filtered_heat_data |>
+  filter(condition == "control", `timepoint [h]` == 0) |>
+  group_by(tissue, gene) |>  
+  summarize(baseline_0h = mean(average, na.rm = TRUE), .groups = "drop")
+
+control_means
+```
+
+## Calculating log2 fold change
+
+```{r}
+#calculate log2 fold change
+heat_log2fc <- filtered_heat_data |>
+  left_join(control_means, by = c("tissue", "gene")) |>
+  mutate(log2FC = average - baseline_0h)
+
+
+#Pick top 50 unique genes with the highest absolute log2 fold change values
+top50_genes <- heat_log2fc |>
+  mutate(abs_log2FC = abs(log2FC)) |> 
+  group_by(gene) |>     
+  slice_max(order_by = abs_log2FC, n = 1) |>   
+  ungroup() |>
+  arrange(desc(abs_log2FC)) |>                  
+  slice_head(n = 50)                            
+
+#Filter out irrelevant genes
+filtered_heat_log2fc <- heat_log2fc |>
+  filter(gene %in% top50_genes$gene, `timepoint [h]` != 0)
+```
+
+## Check if top 50 genes are in the gene file
+
+```{r}
+all(top50_genes$gene %in% significant_genes$gene)
+```
+
+## Plotting heat map (Controls + Shoots)
+
+```{r}
+#setting up range for the FC legend
+fc_limits <- range(filtered_heat_log2fc$log2FC)
+
+heatmap_data1 <- filtered_heat_log2fc |>
+  filter(condition == "control", tissue == "Shoots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data1, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(title = "Shoot gene expression over time (control conditions)",
+       x = "Timepoint [h]",
+       y = "Genes",
+       fill = "Log2 Fold Change")
+```
+
+## Plotting heat map (Cold + Shoots)
+
+```{r}
+
+heatmap_data3 <- filtered_heat_log2fc |>
+  filter(condition == "cold", tissue == "Shoots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data3, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(
+    title = "Root gene expression over time (control conditions)",
+    x = "Timepoint [h]",
+    y = "Genes", 
+    fill = "Log2 Fold Change"
+  )
+
+```
+
+## Plotting heat map (Control + Roots)
+
+```{r}
+heatmap_data3 <- filtered_heat_log2fc |>
+  filter(condition == "control", tissue == "Roots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data3, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits  # same log2 scale
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(title = "Root gene expression over time (control conditions)",
+       x = "Timepoint [h]",
+       y = "Genes", 
+       fill = "Log2 Fold Change")
+```
+
+## Plotting heat map (Cold + Roots)
+
+```{r}
+heatmap_data4 <- filtered_heat_log2fc |>
+  filter(condition == "cold", tissue == "Roots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data4, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits  # same log2 scale
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5),
+  ) +
+  labs(title = "Root gene expression over time (cold conditions)",
+       x = "Timepoint [h]",
+       y = "Genes",
+       fill = "Log2 Fold Change")
+```
+
+---
+title: "Group08 - 05_analysis_2" 
+subtitle: "Volcano plot" 
+author: "Julija" 
+format: 
+  html:
+    output-dir: results
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library(tidyverse) 
+library(ggplot2) 
+library(ggrepel)
+```
+
+```{r}
+#loading data
+expr_with_meta <- readr::read_tsv("../_raw/data/03_dat_aug.tsv")
+```
+
+```{r}
+# as the averages are calculated for the replicates and the average values are shown for each replicate, here replicate 2 is removed as it has most of the same information and rpelicate 1
+expr_df <- expr_with_meta |>
+  filter(replicate == "Rep1")
+```
+
+## Selecting for shoots and roots
+
+```{r}
+# filtering the data by tissue to prepare for differential expression  
+shoots <- expr_df |> filter(tissue == "Shoots") 
+roots <- expr_df |> filter(tissue == "Roots")
+```
+
+## Differential expression
+
+```{r}
+# computing differential gene expression in tissue, taking into account conditions  
+comp_de <- function(dat) {   
+  dat |> 
+    group_by(gene) |>  
+    summarise(
+      mean_cold = mean(expression[condition == "cold"], na.rm = TRUE),
+      mean_control = mean(expression[condition == "control"], na.rm = TRUE),
+      log2FC = mean_cold - mean_control,
+      pvalue = t.test(expression ~ condition)$p.value) |>   
+    mutate(neglog10p = -log10(pvalue))}   
+
+shoots_de <- comp_de(shoots) 
+roots_de <- comp_de(roots)
+```
+
+## Trial volcano plot for gene expression in shoots
+
+```{r}
+# trying out the data on in the plot
+ggplot(data = shoots_de, 
+       aes(x = log2FC, y = neglog10p)) +   
+  geom_vline(
+    xintercept = c(-1, 1), 
+    col = "gray", 
+    linetype = "dashed") +   
+  geom_hline(
+    yintercept = -log10(0.05), 
+    col = "gray", 
+    linetype = "dashed") +    
+  geom_point(alpha = 0.7) +   
+  labs(     
+    title = "Volcano plot - gene expression in shoots in control vs cold",     
+    x = expression("log"[2]*" fold change"), 
+    y = expression("-log"[10]*"p-value")   
+    )
+```
+
+There is too many data points, so the plot is not optimal. To adjust that, the expression will be marked as up/down-regulated or not-significant.
+
+```{r}
+# marking significance of gene expression changes
+res_shoots <- shoots_de |>    
+  mutate(     
+    sig = case_when(       
+    pvalue < 0.05 & log2FC > 1  ~ "Upregulated",       
+    pvalue < 0.05 & log2FC < -1 ~ "Downregulated",       
+    TRUE ~ "Not significant") 
+    )
+```
+
+## Updated volcano plot for gene expression in shoots
+
+```{r}
+# calculating gene expression means to get the general regulation of genes
+gene_means <- expr_df |>     
+  group_by(gene) |>    
+  summarise(mean_expr = mean(expression))  
+
+# adding the means to the data and capping the values that are above 10 to make have less outliers
+res_shoots_clean <- res_shoots |>    
+  left_join(gene_means, by="gene") |>
+  mutate(
+    neglog10p_capped = pmin(neglog10p, 10)
+    ) |>    
+  filter(mean_expr > 1)   
+
+# adding labels to top 5 upregulated genes
+top_up <- res_shoots_clean |>
+  arrange(desc(log2FC)) |>
+  slice_head(n = 5)
+
+# adding labels to top 5 downregulated genes
+top_down <- res_shoots_clean |>
+  arrange(log2FC) |>
+  slice_head(n = 5)
+
+# pooling the labels to make it easier to add to the plot
+top_labels <- bind_rows(top_up, top_down)
+
+shoots_plot <- ggplot(res_shoots_clean, 
+       aes(log2FC, neglog10p_capped)) +   
+  geom_point(
+    aes(color = sig,
+        alpha = sig,
+        size = sig)) +
+  geom_text_repel(data = top_labels,   # using ggrepel to avoiding label collision
+  aes(label = gene),
+  box.padding = 0.5,
+  point.padding = 0.3,
+  segment.color = "grey40",
+  segment.size = 0.5,
+  arrow = arrow(length = unit(0.01, "npc")), 
+  min.segment.length = 0.1, 
+  max.overlaps = 20,
+  size = 3,
+  force = 2
+  ) +
+  scale_alpha_manual(values = c("Not significant" = 0.15,
+                                "Upregulated" = 0.8,
+                                "Downregulated" = 0.8)) + 
+  scale_size_manual(values = c("Not significant" = 0.5,
+                                "Upregulated" = 1.5,
+                                "Downregulated" = 1.5)) + 
+  scale_color_manual(values = c(
+    "Upregulated"="#A30000", 
+    "Downregulated"="#0000A3",
+    "Not significant"="gray")) +   
+  geom_vline(
+    xintercept = c(-1, 1), 
+    col = "gray", 
+    linetype = "dashed") +   
+  scale_x_continuous(
+    breaks = seq(-3, 5, 1)) +   
+  theme_light() +   
+  theme(legend.position = "bottom") +   
+  guides(alpha = "none", size = "none") + 
+  labs(
+    title = "Volcano plot - gene expression in shoots in control vs cold",
+    color = "Expression rate", 
+    x = expression("log"[2]*" fold change"), 
+    y = expression("-log"[10]*"p-value"))
+
+shoots_plot
+```
+
+## Volcano plot for gene expression in roots
+
+```{r}
+# marking significance of gene expression changes
+res_roots <- roots_de |>    
+  mutate(     
+    sig = case_when(       
+    pvalue < 0.05 & log2FC > 1  ~ "Upregulated",       
+    pvalue < 0.05 & log2FC < -1 ~ "Downregulated",       
+    TRUE ~ "Not significant") 
+    )
+```
+
+```{r}
+# calculating gene expression means to get the general regulation of genes
+gene_means <- expr_df |>     
+  group_by(gene) |>    
+  summarise(mean_expr = mean(expression))  
+
+# adding the means to the data and capping the values that are above 10 to make have less outliers
+res_roots_clean <- res_roots |>    
+  left_join(gene_means, by="gene") |>
+  mutate(
+    neglog10p_capped = pmin(neglog10p, 10)
+    ) |>    
+  filter(mean_expr > 1)   
+
+# adding labels to top 5 upregulated genes
+top_up <- res_roots_clean |>
+  arrange(desc(log2FC)) |>
+  slice_head(n = 5)
+
+# adding labels to top 5 downregulated genes
+top_down <- res_roots_clean |>
+  arrange(log2FC) |>
+  slice_head(n = 5)
+
+# pooling the labels to make it easier to add to the plot
+top_labels <- bind_rows(top_up, top_down)
+
+roots_plot <- ggplot(res_roots_clean, 
+       aes(log2FC, neglog10p_capped)) +   
+  geom_point(
+    aes(color = sig,
+        alpha = sig,
+        size = sig)) +
+  geom_text_repel(data = top_labels,  # using ggrepel to avoiding label collision
+  aes(label = gene),
+  box.padding = 0.5,
+  point.padding = 0.3,
+  segment.color = "grey40",
+  segment.size = 0.5,
+  arrow = arrow(length = unit(0.01, "npc")),
+  min.segment.length = 0.1,  
+  max.overlaps = 20,
+  size = 3,
+  force = 2
+  ) +
+  scale_alpha_manual(values = c("Not significant" = 0.15,
+                                "Upregulated" = 0.8,
+                                "Downregulated" = 0.8)) + 
+  scale_size_manual(values = c("Not significant" = 0.5,
+                                "Upregulated" = 1.5,
+                                "Downregulated" = 1.5)) + 
+  scale_color_manual(values = c(
+    "Upregulated"="#A30000", 
+    "Downregulated"="#0000A3",
+    "Not significant"="gray")) +   
+  geom_vline(
+    xintercept = c(-1, 1), 
+    col = "gray", 
+    linetype = "dashed") +   
+  scale_x_continuous(
+    breaks = seq(-3, 5, 1)) +   
+  theme_light() +   
+  theme(legend.position = "bottom") +   
+  guides(alpha = "none", size = "none") + 
+  labs(
+    title = "Volcano plot - gene expression in roots in control vs cold",
+    color = "Expression rate", 
+    x = expression("log"[2]*" fold change"), 
+    y = expression("-log"[10]*"p-value"))
+
+roots_plot
+```
+
+---
+title: "Group08 - 05_analysis_3"
+subtitle: "PCA plot"
+author: "Greta"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+library("tidyverse")
+library("broom")
+
+```
+
+## Load data
+
+```{r}
+clean_data <- read_tsv("../_raw/data/03_dat_aug_2.tsv")
+clean_data
+
+```
+
+## **Create a PCA object**
+
+First, we run PCA and store the result in a variable called `pca_data`. To use the `prcomp()` function, we need to remove all non-numeric columns from the data. We can do this with the `where(is.numeric)`.
+
+Second, we standardize the numeric variables (gene expression values) before performing PCA to make their scales comparable. We do this by setting the argument `scale = TRUE` inside `prcomp()`.
+
+**Plotting the data in PC coordinates.** To do this, we combine the PCA results (the PC coordinates) with the original dataset. This allows us to group the samples by categorical variables that were removed before performing PCA. We can do this using the `augment()` function from **broom**. The new columns containing the PCA coordinates are named `.fittedPC1`, `.fittedPC2`, and so on.
+
+```{r}
+pca_fit <- clean_data |> 
+  select_if(is.numeric) |> # retain only numeric columns as prcomp() can only work on numeric data
+  prcomp(scale = TRUE) # do PCA on scaled data (which has zero mean and unit variance for every variable i.e. every variable contributes equally to the PCA) 
+
+```
+
+```{r}
+PC_plot <- pca_fit |>
+  augment(clean_data) |> 
+  mutate(
+    condition_tissue = paste(condition, tissue, sep = "-"),
+    time_num = as.numeric(sub("h", "", timepoint)),
+    # converts "0h" → "0", get numeric values for better visualization
+    timepoint = factor(
+      time_num,
+      levels = sort(unique(time_num)) # convert to ordered factor
+    )
+  )
+  
+PCA_plot <- ggplot(PC_plot, aes(.fittedPC1, .fittedPC2, color = timepoint, shape = condition_tissue)) +
+  geom_point(size = 2) +
+  labs(title = "PC coordinates plot", 
+       subtitle = "PCA of gene expression across \nTissue, Condition, and Timepoint", 
+         x = "Fitted PC1", y = "Fitted PC2", 
+         color = "Timepoint") +
+  theme_minimal()
+PCA_plot
+
+ggsave("../results/05_key_plot_4.png", PCA_plot, width = 8, height = 5, dpi = 300)
+```
+
+**Very strong separation by tissue** along PC1 and **strong separation by condition + timepoint** along PC2.
+
+The largest source of gene expression variation is tissue type.
+
+**PC2 reflects the cold response trajectory over time.** Early cold response is closer to control. Later timepoints diverge strongly in gene expression.
+
+## Variance explained by each PC (up to PC10)
+
+In this plot we are looking at the variance explained by each principle component (up to PC10).
+
+```{r}
+pca_fit |>
+  tidy(matrix = "eigenvalues")
+```
+
+```{r}
+# get tibble of PCs and variances
+PC_variance <- pca_fit |>
+  tidy(matrix = "eigenvalues") |>
+# choose only the first 10 PCs 
+  filter(PC <= 10)
+  
+PC_variance_plot <- ggplot(PC_variance, aes(x = PC, y = percent)) + 
+  geom_col(fill= "pink", alpha = 0.7) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.05))) +
+  theme(plot.title = element_text(size = 10)) + 
+  labs(title = "Variation of the First 10 Principal Components",
+    x = "Principal components", 
+    y = 'Percent') +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray50", linewidth = 0.2))
+
+PC_variance_plot
+
+ggsave("../results/05_key_plot_5.png", PC_variance_plot, width = 8, height = 5, dpi = 300)
+```
+
+The first component captures more than 50 percent of the variation in the data. The remaining nine components, among the first ten, capture progressively smaller percentages of the variation.
