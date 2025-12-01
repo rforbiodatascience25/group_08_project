@@ -77,3 +77,24 @@ expr_with_meta <- expr_with_meta |>
 ```{r}
 readr::write_tsv(expr_with_meta, "../_raw/data/03_dat_aug.tsv")
 ```
+
+## 7. Dataset for PCA analysis
+
+```{r}
+data_for_PCA <- expr_with_meta |>
+  mutate(sample_id = paste(
+    .data[["condition"]],
+    .data[["tissue"]],
+    .data[["timepoint"]],
+    .data[["replicate"]],
+    sep = "_"
+  ))
+
+
+data_for_PCA_wide <- data_for_PCA |>
+  dplyr::select(sample_id, gene, condition, tissue, timepoint, expression) |>
+  pivot_wider(names_from = gene,
+              values_from = expression)
+
+readr::write_tsv(data_for_PCA_wide, "../_raw/data/03_dat_aug_2.tsv")
+```

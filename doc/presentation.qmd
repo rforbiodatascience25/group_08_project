@@ -199,29 +199,57 @@ expr_with_meta <- expr_with_meta |>
 
 ---
 
-## Step 04 - Describe  
-(placeholder slide for your summary + plot)
+## Step 04 - Describe
+
+:::: {.columns}
+
+::: {.column width="80%"}
+![](../results/04_key_plot_2.png)
+:::
+
+::: {.column width="20%"}
+
+<div style="font-size:0.8em;">
+
+<div style="text-align:center; text-decoration:underline;">
+SRC2:
+</div>
+
+::: {.incremental}
+- Ca-binding regulator
+- strongly upregulated
+- shoots more affected
+:::
+
+</div>
+
+:::
+
+::::
+
 
 ---
 
-## Step 05 - Heatmap  
+## Step 05.1 - Polynomial Model   
 (placeholder slide)
 
 ---
 
-## Step 05 - Volcano Plot  
+## Step 05.2 - Heatmap   
+
+#![](images/XXX.png) 
+
+---
+
+## Step 05.3 - PCA Plot  
 (placeholder slide)
 
 ---
 
-## Step 05 - PCA Plot  
-(placeholder slide)
+## Step 05.4 - Volcano Plot
+
+
 
 ---
 
-## Step 05 - Linear Model (broom)  
-(placeholder slide)
-
----
-
-# Thank you! {footer=false}
+## Thank you! {footer=false}

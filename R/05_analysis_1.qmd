@@ -454,7 +454,7 @@ newdata <- newdata |>
 ```
 
 ```{r}
-ggplot(newdata, aes(x = time, 
+model_pred_experssion_ATGPT2 <- ggplot(newdata, aes(x = time, 
                     y = fit, 
                     color = condition)) +
   geom_line(size = 1) +
@@ -462,9 +462,13 @@ ggplot(newdata, aes(x = time,
                   ymax = upper, 
                   fill = condition), alpha = 0.15, color = NA) +
   facet_wrap(~ tissue) +
-  labs(title = str_c("ATGPT2: model predicted expression over time (Shaded = 95% CI)"),
+  labs(title = str_c("(AT)GPT2: model predicted expression over time (Shaded = 95% CI)"),
        y = "Predicted expression", x = "Time") +
   theme_minimal(base_size = 14)
+
+model_pred_experssion_ATGPT2
+
+ggsave("../results/05_key_plot_1.png", model_pred_experssion_ATGPT2, width = 8, height = 6, dpi = 300)
 ```
 
 So, it is not weird that ATGPT2 has both a large positive and negative estimate for the two polynomial times - the expression pattern is essentially opposite in shoots under cold and control conditions. There is very little difference in the gene expression over time in roots between conditions, however.
@@ -519,6 +523,7 @@ forest_cold_and_stress_plot <- data_estimates |>
        colour = "Model term",
        title = "Statistically significant gene expression estimates across control and cold condtions, \nwithin roots and shoots, for known cold and stress annotated genes")
 forest_cold_and_stress_plot
+ggsave("../results/05_key_plot_2.png", forest_cold_and_stress_plot, width = 12, height = 13, dpi = 300)
 ```
 
 Some genes have multiple data entries for estimates. This is due to the model having up to three way interactions. All of these genes have statistically significantly different gene expression across tissues, however the estimate effect is among smallest. Some terms including poly(time, 3) have both positive and negative estimate effects. This is normal since the polynomial time terms assume linear, squared or cubic gene expression i.e. genes could be down or upregulated across time.
