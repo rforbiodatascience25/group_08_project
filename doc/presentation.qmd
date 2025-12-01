@@ -220,7 +220,22 @@ expr_with_meta <- expr_with_meta |>
 ---
 
 ## Step 05 - Linear Model (broom)  
-(placeholder slide)
+:::: {.columns}
+
+::: {.column width="50%"}
+![](github.com/rforbiodatascience25/Group08_project/blob/main/results/05_key_plot_1.png){width="70%"}
+
+:::
+
+::: {.column width="50%"}
+
+
+![](github.com/rforbiodatascience25/Group08_project/blob/main/results/05_key_plot_2.png){width="70%"}
+
+
+:::
+
+::::
 
 ---
 
