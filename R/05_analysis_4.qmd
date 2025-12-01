@@ -57,8 +57,8 @@ small_test_ATSRC2
 
 ```{r}
 ggplot(small_test_ATSRC2, aes(x = time,
-                         y = expression,
-                         color = condition)) +
+                              y = expression,
+                              color = condition)) +
   geom_point() + 
   geom_line(aes(y = average)) +
   facet_wrap(~tissue) +
@@ -114,7 +114,10 @@ Since all three-way interaction terms are non-significant (p\>0.05), there is no
 small_test_ATSRC2$fitted <- predict(model)
 
 plot4 <- ggplot(small_test_ATSRC2, 
-                aes(x = time, y = expression, color = condition)) +geom_point() +
+                aes(x = time, 
+                    y = expression, 
+                    color = condition)) +
+  geom_point() +
   geom_line(aes(y = fitted)) +
   facet_wrap(~ tissue) +
   ylab("Gene expession (log10 adjusted)") +
@@ -150,9 +153,7 @@ nested_data |>
 nested_data <- nested_data |> 
   group_by(gene) |> 
   mutate(model_object = map(.x = data,
-                   .f = ~lm(formula = 
-                              expression ~ condition * poly(time, 3) * tissue, 
-                            data = .x)))
+                            .f = ~lm(formula = expression ~ condition * poly(time, 3) * tissue, data = .x)))
 nested_data
 ```
 
@@ -295,15 +296,12 @@ forest_plot_top20 <- data_estimates |>
   theme_minimal(base_size = 16) +
   theme(legend.position="bottom")+
   guides(colour = guide_legend(ncol = 2)) +
-  labs(
-    x = "Estimates (95% CIs)",
-    y = "",
-    title = "Statistically significant gene expression estimates across control and \ncold conditions, within roots and shoots, for genes of top 20 highest \nabsolute estimate value",
-    colour = "Model terms"
-  ) 
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates across control and \ncold conditions, within roots and shoots, for genes of top 20 highest \nabsolute estimate value",
+       colour = "Model terms") 
 
 forest_plot_top20
-
 ```
 
 Most of the genes with the greatest estimate effect shows the gene is upregulated with time in the cold condition (conditioncold:poly(time, 3)1).
@@ -330,23 +328,19 @@ forest_plot_cold_time_tissue <- cold_time_tissue_sig |>
     y = fct_reorder(gene, estimate),
     xmin = conf.low,
     xmax = conf.high,
-    colour = term
-  )) +
+    colour = term)) +
   geom_vline(xintercept = 0) +
   geom_errorbar(orientation = "y") +
   geom_point(size = 3) +
   theme_minimal(base_size = 16) +
   theme(legend.position = "bottom") +
   guides(colour = guide_legend(ncol = 2)) +
-  labs(
-    x = "Estimates (95% CI)",
-    y = "",
-    title = "Cold × Time × Tissue interaction effects across all genes",
-    colour = "Model term"
-  )
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across all genes",
+       colour = "Model term")
 
 forest_plot_cold_time_tissue
-
 ```
 
 Many genes! most common colour is that for conditioncold:poly(time, 3)1:tissueShoots so it is most commonly a statistically significant term in the model.
@@ -363,25 +357,21 @@ forest_plot_top20_interaction
 #| fig-height: 10
 #| fig-width: 10
 forest_plot_cold_time_tissue_top20 <- forest_plot_top20_interaction |>
-  ggplot(aes(
-    x = estimate,
-    y = fct_reorder(gene, estimate),
-    xmin = conf.low,
-    xmax = conf.high,
-    colour = term
-  )) +
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high,
+             colour = term)) +
   geom_vline(xintercept = 0) +
   geom_errorbar(orientation = "y") +
   geom_point(size = 3) +
   theme_minimal(base_size = 16) +
   theme(legend.position = "bottom") +
   guides(colour = guide_legend(ncol = 2)) +
-  labs(
-    x = "Estimates (95% CI)",
-    y = "",
-    title = "Cold × Time × Tissue interaction effects across top 20 genes",
-    colour = "Model term"
-  )
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across top 20 genes",
+       colour = "Model term")
 
 forest_plot_cold_time_tissue_top20
 ```
@@ -451,11 +441,15 @@ newdata <- newdata |>
 ```
 
 ```{r}
-ggplot(newdata, aes(x = time, y = fit, color = condition)) +
+ggplot(newdata, aes(x = time, 
+                    y = fit, 
+                    color = condition)) +
   geom_line(size = 1) +
-  geom_ribbon(aes(ymin = lower, ymax = upper, fill = condition), alpha = 0.15, color = NA) +
+  geom_ribbon(aes(ymin = lower, 
+                  ymax = upper, 
+                  fill = condition), alpha = 0.15, color = NA) +
   facet_wrap(~ tissue) +
-  labs(title = paste0("ATGPT2: model predicted expression over time (Shaded = 95% CI)"),
+  labs(title = str_c("ATGPT2: model predicted expression over time (Shaded = 95% CI)"),
        y = "Predicted expression", x = "Time") +
   theme_minimal(base_size = 14)
 ```
@@ -522,7 +516,7 @@ Are all the genes found via annotations statistically significantly up- or down-
 
 ```{r}
 # annotated gene names
-print(paste0("Annotated genes have ", length(cold_and_stress_gene_names), " entries"))
+print(str_c("Annotated genes have ", length(cold_and_stress_gene_names), " entries"))
 
 # model significant gene names
 model_gene_names_df <- data_estimates |> 
@@ -531,7 +525,7 @@ model_gene_names_df <- data_estimates |>
 
 model_gene_names <- as.character(unique(model_gene_names_df$gene))
 
-print(paste0("Model genes have ", length(model_gene_names), " entries"))
+print(str_c("Model genes have ", length(model_gene_names), " entries"))
 
 print("Annotated  gene names that are present in the model are:")
 present_genes <- intersect(cold_and_stress_gene_names, model_gene_names)
