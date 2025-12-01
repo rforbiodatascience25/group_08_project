@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ---
 title: "Group08 - 05_analysis_1"
 subtitle: "Heat map plot"
@@ -16,121 +15,187 @@ library("tidyverse")
 ## Load data
 
 ```{r}
-```
-=======
----
-title: "Group08 - 05_analysis_2" 
-subtitle: "Volcano plot" 
-author: "Julija" 
-format: revealjs
-editor: visual
----
+heat_data <- read_tsv("../_raw/data/expression_with_metadata.tsv")
+pnq_values <- read_csv("../_raw/data/05_analysis_4_results.csv")
 
-## Load packages
-
-```{r}
-library(tidyverse) 
-library(ggplot2) 
-library(ggrepel)
+heat_data
 ```
 
-## Load data
+# Filter and clean up relevant data
 
 ```{r}
-expr_with_meta <- readr::read_tsv("../_raw/data/expression_with_metadata.tsv")
+pnq_values
 ```
 
 ```{r}
-expr_df <- expr_with_meta |>
-  filter(replicate == "Rep1")
-View(expr_df)
-```
-
-## Selecting for shoots and roots
-
-```{r}
-# filtering the data by tissue to prepare for differential expression
-shoots <- expr_df |> 
-  filter(tissue == "Shoots") 
-roots <- expr_df |> 
-  filter(tissue == "Roots")
-```
-
-## Differential expression
-
-```{r}
-# computing differential gene expression in tissue, taking into account conditions
-comp_de <- function(dat) {   
-  dat |> group_by(gene) |> 
-    reframe(log2FC = log2(
-      mean(expression[condition == "cold"]) / (expression[condition == "control"])),
-              pvalue = t.test(expression ~ condition)$p.value) |> 
-    mutate(neglog10p = -log10(pvalue))}   
-
-shoots_de <- comp_de(shoots) 
-roots_de <- comp_de(roots)
-```
-
-## Volcano plot for gene expression in shoots
-
-```{r}
-ggplot(data = shoots_de, 
-       aes(x = log2FC, y = neglog10p)) +   
-  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = "dashed") +   
-  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = "dashed") + 
-  geom_point(alpha = 0.7) + 
-  labs(     
-    title = "Volcano plot - gene expression in shoots in control vs cold",     
-    x = expression("log"[2]*" fold change"), 
-    y = expression("-log"[10]*"p-value")
-    )
-```
-
-There is too many data points, so the plot is not optimal. To adjust that, the expression will be marked as up/down-regulated or not-significant.
-
-```{r}
-res <- shoots_de |>
+filtered_heat_data <- heat_data |>
+  filter(replicate == "Rep1") |>
+  dplyr::select(gene, timepoint, condition, tissue, average) |>
+  dplyr::rename(`timepoint [h]` = timepoint) |>                
   mutate(
-    sig = case_when(
-      pvalue < 0.05 & log2FC > 1  ~ "Upregulated",
-      pvalue < 0.05 & log2FC < -1 ~ "Downregulated",
-      TRUE ~ "Not significant" 
-      ) 
+    `timepoint [h]` = as.numeric(gsub("h", "", `timepoint [h]`))
     )
+
+filtered_heat_data
 ```
 
-To
+## Calculate average expression per tissue and gene in control samples at 0h (Control baseline)
 
 ```{r}
-gene_means <- expr_with_meta |>
-  group_by(gene) |> 
-  summarise(mean_expr = mean(expression))  
+control_means <- filtered_heat_data |>
+  filter(condition == "control", `timepoint [h]` == 0) |>
+  group_by(tissue, gene) |>  
+  summarize(baseline_0h = mean(average, na.rm = TRUE), .groups = "drop")
 
-res_clean <- res |>    
-  left_join(gene_means, by="gene") |>    
-  filter(mean_expr > 1)   
-
-res$neglog10p_capped <- pmin(res$neglog10p, 10)  
-
-ggplot(res_clean, aes(log2FC, neglog10p_capped)) +   
-  geom_point(aes(color = sig),       
-             alpha = ifelse(res_clean$sig == "Not significant", 0.15, 0.8), 
-             size = ifelse(res_clean$sig == "Not significant", 0.5, 1.5)) + 
-  scale_color_manual(values = c(     
-    "Upregulated"="#A30000",     
-    "Downregulated"="#0000A3",     
-    "Not significant"="gray"   
-    )) +   
-  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = "dashed") +  
-  scale_x_continuous(breaks = seq(-3, 5, 1)) +   
-  theme_light() +   
-  theme(     
-    legend.position = "bottom") +   
-  ggtitle("Volcano plot - gene expression in shoots in control vs cold") +   
-  labs(
-    color = "Expression rate", 
-    x = expression("log"[2]*" fold change"), 
-    y = expression("-log"[10]*"p-value")
-    )
+control_means
 ```
->>>>>>> Julija
+
+## Calculating log2 fold change
+
+```{r}
+#calculate log2 fold change
+heat_log2fc <- filtered_heat_data |>
+  left_join(control_means, by = c("tissue", "gene")) |>
+  mutate(log2FC = average - baseline_0h)
+
+
+#Pick top 50 unique genes with the highest absolute log2 fold change values
+top50_genes <- heat_log2fc |>
+  mutate(abs_log2FC = abs(log2FC)) |> 
+  group_by(gene) |>     
+  slice_max(order_by = abs_log2FC, n = 1) |>   
+  ungroup() |>
+  arrange(desc(abs_log2FC)) |>                  
+  slice_head(n = 50)                            
+
+#Filter out irrelevant genes
+filtered_heat_log2fc <- heat_log2fc |>
+  filter(gene %in% top50_genes$gene, `timepoint [h]` != 0)
+```
+
+## Plotting heat map (Controls + Shoots)
+
+```{r}
+#setting up range for the FC legend
+fc_limits <- range(filtered_heat_log2fc$log2FC)
+
+heatmap_data1 <- filtered_heat_log2fc |>
+  filter(condition == "control", tissue == "Shoots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data1, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(title = "Shoot gene expression over time (control conditions)",
+       x = "Timepoint [h]",
+       y = "Genes",
+       fill = "Log2 Fold Change")
+```
+
+## Plotting heat map (Cold + Shoots)
+
+```{r}
+heatmap_data2 <- filtered_heat_log2fc |>
+  filter(condition == "cold", tissue == "Shoots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+p1 <- ggplot(heatmap_data2, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(title = "Shoot gene expression over time (cold conditions)",
+       x = "Timepoint [h]", 
+       y = "Genes", 
+       fill = "Log2 Fold Change")
+```
+
+## Plotting heat map (Control + Roots)
+
+```{r}
+heatmap_data3 <- filtered_heat_log2fc |>
+  filter(condition == "control", tissue == "Roots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data3, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits  # same log2 scale
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5)
+  ) +
+  labs(title = "Root gene expression over time (control conditions)",
+       x = "Timepoint [h]",
+       y = "Genes", 
+       fill = "Log2 Fold Change")
+```
+
+## Plotting heat map (Cold + Roots)
+
+```{r}
+heatmap_data4 <- filtered_heat_log2fc |>
+  filter(condition == "cold", tissue == "Roots") |>
+  mutate(
+    gene = factor(gene, levels = unique(gene)),
+    `timepoint [h]` = factor(`timepoint [h]`)  
+  )
+
+ggplot(heatmap_data4, aes(x = `timepoint [h]`, y = gene, fill = log2FC)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "cyan",
+    mid = "black",
+    high = "deeppink",
+    midpoint = 0,
+    limits = fc_limits  # same log2 scale
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 5.5),
+    plot.title = element_text(hjust = 0.2, face = "bold"),
+    axis.title.x = element_text(vjust = -0.5),
+  ) +
+  labs(title = "Root gene expression over time (cold conditions)",
+       x = "Timepoint [h]",
+       y = "Genes",
+       fill = "Log2 Fold Change")
+```
