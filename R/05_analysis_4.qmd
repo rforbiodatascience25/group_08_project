@@ -351,7 +351,7 @@ forest_plot_cold_time_tissue
 
 Many genes! most common colour is that for conditioncold:poly(time, 3)1:tissueShoots so it is most commonly a statistically significant term in the model.
 
-#### Find genes affected the most by the cold × time × tissue interaction 
+#### Find genes affected the most by the cold × time × tissue interaction
 
 ```{r}
 forest_plot_top20_interaction <- cold_time_tissue_sig |>
