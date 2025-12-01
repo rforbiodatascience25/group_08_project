@@ -17,8 +17,8 @@ library("janitor")
 ## 1. Load cleaned data
 
 ```{r}
-expr_filtered <- readr::read_tsv("../_raw/data/expression_filtered_normalized.tsv")
-sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
+expr_filtered <- readr::read_tsv("../_raw/data/02_dat_clean.tsv")
+sample_metadata <- readr::read_tsv("../_raw/data/01_dat_load_1.tsv")
 ```
 
 ## 2. Extract expression matrix

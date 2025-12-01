@@ -17,8 +17,8 @@ library("janitor")
 ## 1. Load data produced in 01_load
 
 ```{r}
-sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
-expr_annotated  <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+sample_metadata <- readr::read_tsv("../_raw/data/01_dat_load_1.tsv")
+expr_annotated  <- readr::read_tsv("../_raw/data/01_dat_load_2.tsv")
 ```
 
 ## 2. Filter Uninformative Genes

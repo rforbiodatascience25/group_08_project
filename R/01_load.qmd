@@ -130,7 +130,7 @@ sample_metadata <- bind_rows(meta_5620, meta_5621)
 if (!dir.exists("../_raw/data")) dir.create("../_raw/data", recursive = TRUE)
 
 # Save clean metadata as TSV (recommended for bioinformatics)
-readr::write_tsv(sample_metadata, "../_raw/data/sample_metadata.tsv")
+readr::write_tsv(sample_metadata, "../_raw/data/01_dat_load_1.tsv")
 
 
 ```
@@ -196,5 +196,5 @@ expr_annotated <- dplyr::left_join(
 # This serves as a complete reference version of the dataset.
 # The filtered version (created in Step 8) will be used for downstream analysis (PCA, differential expression, clustering, heatmaps, etc.).
 
-readr::write_tsv(expr_annotated, "../_raw/data/01_dat_load.tsv")
+readr::write_tsv(expr_annotated, "../_raw/data/01_dat_load_2.tsv")
 ```

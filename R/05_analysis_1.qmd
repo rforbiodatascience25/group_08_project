@@ -21,7 +21,7 @@ library("stringr")
 
 ```{r}
 data <- read_tsv("../_raw/data/03_dat_aug.tsv")
-expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load.tsv")
+expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load_2.tsv")
 ```
 
 ## Prepare the data
@@ -187,7 +187,7 @@ nested_data |>
 data_estimates <- nested_data |>
   unnest(model_object_tidy) |> 
   filter(term != "(Intercept)") |> 
-  dplyr::select(gene, term, estimate, p.value, conf.low, conf.high) |> 
+  select(gene, term, estimate, p.value, conf.low, conf.high) |> 
   ungroup()
 data_estimates
 ```
@@ -206,12 +206,12 @@ data_estimates
 ```{r}
 significant_data_estimates <- data_estimates |>
   filter(is_significant == "yes") |> 
-  dplyr::select(gene, term, estimate, p.value, q.value)
+  select(gene, term, estimate, p.value, q.value)
 significant_data_estimates
 ```
 
 ```{r}
-raw_data <- nested_data |> dplyr::select(gene, data) |> unnest(data)
+raw_data <- nested_data |> select(gene, data) |> unnest(data)
 
 annotated_sig_results <- raw_data |>
   left_join(data_estimates |> filter(is_significant == "yes"),
@@ -399,8 +399,8 @@ top20_gene_names
 
 ```{r}
 expr_annotated_gene_info <- expr_annotated |>
-  dplyr::select(genename, symbol) |>
-  dplyr::rename("gene" = "symbol")
+  select(genename, symbol) |>
+  rename("gene" = "symbol")
 
 top20_gene_data <- expr_annotated_gene_info |>
   filter(gene %in% top20_gene_names)
@@ -410,7 +410,7 @@ top20_gene_data_and_estimates <- left_join(top20_gene_data,
                                            by = "gene")
   
 top20_gene_data_and_estimates <- top20_gene_data_and_estimates |>
-  dplyr::select(gene, genename, estimate, term) |>
+  select(gene, genename, estimate, term) |>
   arrange(estimate)
 top20_gene_data_and_estimates
 ```
@@ -534,7 +534,7 @@ print(str_c("Annotated genes have ", length(cold_and_stress_gene_names), " entri
 # model significant gene names
 model_gene_names_df <- data_estimates |> 
   filter(is_significant == "yes") |>
-  dplyr::select(gene)
+  select(gene)
 
 model_gene_names <- as.character(unique(model_gene_names_df$gene))
 
