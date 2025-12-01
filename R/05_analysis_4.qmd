@@ -11,13 +11,15 @@ editor: visual
 ```{r}
 library("tidyverse")
 library("broom")
+
 ```
 
 ## Load data
 
 ```{r}
-clean_data <- read_csv("../R/_processed/expression_with_metadata.csv")
+clean_data <- read_tsv("../_raw/data/03_dat_aug_2.tsv")
 clean_data
+
 ```
 
 ## **Create a PCA object**
@@ -26,16 +28,17 @@ First, we run PCA and store the result in a variable called `pca_data`. To use t
 
 Second, we standardize the numeric variables (gene expression values) before performing PCA to make their scales comparable. We do this by setting the argument `scale = TRUE` inside `prcomp()`.
 
+**Plotting the data in PC coordinates.** To do this, we combine the PCA results (the PC coordinates) with the original dataset. This allows us to group the samples by categorical variables that were removed before performing PCA. We can do this using the `augment()` function from **broom**. The new columns containing the PCA coordinates are named `.fittedPC1`, `.fittedPC2`, and so on.
+
 ```{r}
 pca_fit <- clean_data |> 
   select_if(is.numeric) |> # retain only numeric columns as prcomp() can only work on numeric data
   prcomp(scale = TRUE) # do PCA on scaled data (which has zero mean and unit variance for every variable i.e. every variable contributes equally to the PCA) 
+
 ```
 
-**Plotting the data in PC coordinates.** To do this, we combine the PCA results (the PC coordinates) with the original dataset. This allows us to group the samples by categorical variables that were removed before performing PCA. We can do this using the `augment()` function from **broom**. The new columns containing the PCA coordinates are named `.fittedPC1`, `.fittedPC2`, and so on.
-
 ```{r}
-pca_fit |>
+PC_plot <- pca_fit |>
   augment(clean_data) |> 
   mutate(
     condition_tissue = paste(condition, tissue, sep = "-"),
@@ -45,15 +48,17 @@ pca_fit |>
       time_num,
       levels = sort(unique(time_num)) # convert to ordered factor
     )
-  ) |>
-  ggplot(aes(.fittedPC1, .fittedPC2, color = timepoint, shape = condition_tissue)) +
+  )
+  
+PCA_plot <- ggplot(PC_plot, aes(.fittedPC1, .fittedPC2, color = timepoint, shape = condition_tissue)) +
   geom_point(size = 2) +
   labs(title = "PC coordinates plot", 
        subtitle = "PCA of gene expression across \nTissue, Condition, and Timepoint", 
          x = "Fitted PC1", y = "Fitted PC2", 
          color = "Timepoint") +
-  theme_half_open(12) + background_grid()
+  theme_minimal()
 
+ggsave("../results/05_key_plot_4.png", PCA_plot, width = 8, height = 5, dpi = 300)
 ```
 
 **Very strong separation by tissue** along PC1 and **strong separation by condition + timepoint** along PC2.
@@ -62,72 +67,37 @@ The largest source of gene expression variation is tissue type.
 
 **PC2 reflects the cold response trajectory over time.** Early cold response is closer to control. Later timepoints diverge strongly in gene expression.
 
-## **Create a rotation matrix**
+## Variance explained by each PC (up to PC10)
 
-Next, we’ll plot the **rotation matrix**, which shows how the original variables relate to the PCs.
-
-The rotation matrix is stored in `pca_fit$rotation`.
-
-To make it easier to work with, we can use the **`tidy()` function** from the `broom` package. For `prcomp` objects, `tidy()` needs an extra argument: `matrix = "rotation"`. This tells `tidy()` to extract the **rotation matrix** specifically.
+In this plot we are looking at the variance explained by each principle component (up to PC10).
 
 ```{r}
-# extract rotation matrix
-pca_wide <- pca_fit |>
-  tidy(matrix = "rotation") |>
-  pivot_wider(names_from = PC, values_from = value)
-
-```
-
-```{r}
-# Turning data into wide data
-pca_wide <- pca_fit |>
-  pivot_wider(names_from = PC, values_from = value)
-
-#To reduce the noice, top 30% most variable genes are choosen in order to balance signal vs noise.
-
-
-# define arrow style for plotting
-arrow_style <- arrow(
-  angle = 20, ends = "first", type = "closed", length = grid::unit(8, "pt")
-)
-```
-
-```{r}
-# plot rotation matrix
 pca_fit |>
-  tidy(matrix = "rotation") |>
-  pivot_wider(names_from = "PC", names_prefix = "PC", values_from = "value") |>
-  ggplot(aes(PC1, PC2)) +
-  geom_segment(xend = 0, yend = 0, arrow = arrow_style) +
-  geom_text(
-    aes(label = column),
-    hjust = 1, nudge_x = -0.02, 
-    color = "#904C2F"
-  ) +
-  xlim(-1.25, .5) + ylim(-.5, 1) +
-  coord_fixed() + # fix aspect ratio to 1:1
-  theme_minimal()
-
-```
-
-## Look at the variance explained by each PC
-
-Finally, we’ll plot the variance explained by each PC. We can again extract this information using the `tidy()` function from broom, now by setting the `matrix` argument to `matrix = "eigenvalues"`.
-
-```{r}
-pca_data |>
   tidy(matrix = "eigenvalues")
 ```
 
 ```{r}
-pca_data |>
+# get tibble of PCs and variances
+PC_variance <- pca_fit |>
   tidy(matrix = "eigenvalues") |>
-  ggplot(aes(PC, percent)) +
-  geom_col(fill = "#56B4E9", alpha = 0.8) +
-  scale_x_continuous(breaks = 1:9) +
-  scale_y_continuous(
-    labels = scales::percent_format(),
-    expand = expansion(mult = c(0, 0.01))
-  ) +
-  theme_minimal()
+# choose only the first 10 PCs 
+  filter(PC <= 10)
+  
+PC_variance_plot <- ggplot(PC_variance, aes(x = PC, y = percent)) + 
+  geom_col(fill= "pink", alpha = 0.7) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.05))) +
+  theme(plot.title = element_text(size = 10)) + 
+  labs(title = "Variation of the First 10 Principal Components",
+    x = "Principal components", 
+    y = 'Percent') +
+  theme_half_open(12) + 
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray50", linewidth = 0.2))
+
+ggsave("../results/05_key_plot_5.png", PC_variance_plot, width = 8, height = 5, dpi = 300)
 ```
+
+The first component captures more than 50 percent of the variation in the data. The remaining nine components, among the first ten, capture progressively smaller percentages of the variation.
