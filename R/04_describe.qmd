@@ -1,122 +1,168 @@
 ---
-title: "Group08 - 04_describe"
-author: "Dana"
-format: html
+title: "04_describe"
+author: "Eleni&Dana"
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## Load packages
+## 0. Load packages
 
 ```{r}
-library("tidyverse")
+library(tidyverse)
+library(janitor)
 ```
 
-## Load data
+## 1. Load final dataset
 
 ```{r}
-data <- read_tsv("../_raw/data/expression_with_metadata.tsv")
-expr_annotated  <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+# Final enriched dataset created in previous steps
+expr_with_meta <- readr::read_tsv("../_raw/data/expression_with_metadata.tsv")
+
+# Annotated table (used later for gene lookup)
+expr_annotated <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+
 ```
 
-## View data
+## 2. Overview of dataset structure
 
 ```{r}
-View(data)
+# Look at the overall structure
+glimpse(expr_with_meta)
+
+# Number of samples
+n_samples <- nrow(expr_with_meta)
+
+# Number of genes (raw GSM columns)
+gene_cols <- grep("^GSM", names(expr_with_meta), value = TRUE)
+n_genes <- length(gene_cols)
+
+# Print basic information
+tibble(
+  total_samples = n_samples,
+  total_genes = n_genes
+)
 ```
 
-## Plot data for one gene e.g. (AT)SRC2
-
-### Prepare data
+## 3. Sample counts per condition, tissue and timepoint
 
 ```{r}
-data$gene <- as.factor(data$gene)
-data$condition <- factor(data$condition,
-                         levels = c("control", "cold"))
-data$tissue <- factor(data$tissue,
-                      levels = c("Roots", "Shoots"))
-data$timepoint <- factor(data$timepoint,
-                            levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h", 
-                                       "4.0h","6.0h", "12.0h", "24.0h"))
-data$replicate <- as.factor(data$replicate)
+expr_with_meta |> count(condition)
+expr_with_meta |> count(tissue)
+expr_with_meta |> count(timepoint)
 
-plot1_data <- data |>
+```
+
+## 4. Combined table (condition × tissue × timepoint)
+
+```{r}
+expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  arrange(condition, tissue, timepoint)
+
+```
+
+
+## 7. Plot: **Sample Distribution by Condition × Timepoint × Tissue**
+
+```{r}
+plot_describe <- expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  ggplot(aes(x = timepoint, y = n, fill = condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ tissue) +
+  labs(
+    title = "Sample Distribution by Condition, Timepoint, and Tissue",
+    x = "Timepoint",
+    y = "Number of Samples",
+    fill = "Condition"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave("../results/04_key_plot_1.png", plot_describe, width = 8, height = 5, dpi = 300)
+
+plot_describe
+```
+
+## 6. Prepare factors for plotting
+
+```{r}
+expr_with_meta <- expr_with_meta |>
+  mutate(
+    gene = as.factor(gene),
+    condition = factor(condition, levels = c("control", "cold")),
+    tissue = factor(tissue, levels = c("Roots", "Shoots")),
+    timepoint = factor(timepoint,
+        levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h",
+                   "4.0h", "6.0h", "12.0h", "24.0h")),
+    replicate = as.factor(replicate)
+  )
+```
+
+## 7. Plot expression for one example gene: (AT)SRC2
+```{r}
+# Filter and prepare data
+plot1_data <- expr_with_meta |>
   filter(gene == "(AT)SRC2") |>
-  select(-expression) |>
   distinct(average, .keep_all = TRUE)
-
 ```
 
-### Compare expression within the same condition, between different tissues
+## A. Compare expression between tissues (within conditions)
 
 ```{r}
-plot1 <- 
-  ggplot(plot1_data, aes(x = timepoint,
-                         y = average,
-                         color = tissue)) +
+plot1 <- ggplot(plot1_data,
+                aes(x = timepoint, y = average, color = tissue)) +
   geom_point() +
   facet_wrap(~condition) +
-  ggtitle("Average log10 expression of (AT)SRC2 between both conditions, in both tissues") +
+  ggtitle("Average log10 expression of (AT)SRC2 between tissues and conditions") +
   ylab("Log10 expression")
-  
+
 plot1
+
 ```
 
-Shoots and roots have somewhat similar expression patterns- starting high and going low - in control conditions. The pattern is opposite in cold condition - starting low and going high. Since cold condition here is missing 0 and 0.25 hrs, it is unclear how quickly the expression drops between 24 hrs to 0 h (essentially the same) and 0.5 hrs (similar time). Thus, there is quite a drop between 24 hrs and 0.5 hrs.
-
-### Compare expression within the same tissues, between different conditions
-
+## B. Compare expression between conditions (within tissues)
 ```{r}
-plot2 <- 
-  ggplot(plot1_data, aes(x = timepoint,
-                         y = average,
-                         color = condition)) +
+plot2 <- ggplot(plot1_data,
+                aes(x = timepoint, y = average, color = condition)) +
   geom_point() +
   facet_wrap(~tissue) +
-  ggtitle("Average log10 expression of (AT)SRC2 within both conditions, \nbetween both tissues") +
+  ggtitle("Average log10 expression of (AT)SRC2 within tissues across conditions") +
   ylab("Log10 expression")
-  
+
 plot2
+
 ```
 
-Shoots and roots have different expression patterns across time. The patterns are similar between cold and control conditions, however expression seems to be lower under cold conditions.
-
+## 8. What is known about (AT)SRC2?
 ```{r}
-# find out what gene (AT)SRC2 is
-expr_annotated_gene_info <- expr_annotated |>
-  select(genename, symbol)
-
-`(AT)SRC2_data` <- expr_annotated_gene_info |>
+expr_annotated |>
+  select(genename, symbol) |>
   filter(symbol == "(AT)SRC2")
+```
 
-print("Known information about (AT)SRC2 gene is that:")
-`(AT)SRC2_data`$genename
+
+## 9. Plot five random genes 
+```{r}
+set.seed(123) # reproducible
+five_genes <- sample(unique(expr_with_meta$gene), 5)
+
+data_plot3 <- expr_with_meta |> filter(gene %in% five_genes)
 
 ```
 
-(AT)SRC2 is marked as being involved in protein storage vacuole targeting. In cold conditions, it is expressed at a higher rate, potentially signifying that vacuoles are used for nutrient retrieval.
-
-## Plot data for random five genes
-
 ```{r}
-genes <- unique(data$gene)
-five_genes <- sample(genes, 5)
-five_genes
-
-data_plot3 <- data |>
-  filter(gene %in% five_genes)
-```
-
-```{r}
-plot3 <- 
-  ggplot(data_plot3, aes(x = timepoint,
-                         y = average,
-                         color = gene)) +
+plot3 <- ggplot(data_plot3,
+                aes(x = timepoint, y = average, color = gene)) +
   geom_point() +
-  facet_wrap(condition~tissue) +
-  ggtitle("Average log10 expression of five randomly selected genes, between both conditions and in both tissues") +
+  facet_wrap(condition ~ tissue) +
+  ggtitle("Average log10 expression of five randomly selected genes") +
   ylab("Log10 expression")
-  
+
 plot3
 ```
-
-A snippet of randomly chosen 5 genes' expression shows that the gene expression can stay similar across conditions or vary a bit.

@@ -1,0 +1,179 @@
+---
+title: "Cold Stress Response in *Arabidopsis thaliana*"
+subtitle: "ATGenExpress Affymetrix Microarray Analysis"
+date: "01-12-2025"
+format:
+  revealjs: 
+    theme: serif
+    footer: 22160 - R for Bio Data Science
+    incremental: true
+    slideNumber: true
+---
+
+## Project Overview
+
+<div style="font-size:0.85em;">
+
+::: {.nonincremental}
+- 01_load - *Import raw GEO series matrix files* 
+- 02_clean - *Filter probes, remove controls, annotate genes*  
+- 03_augment - *Integrate metadata, add averaged expression values*  
+- 04_describe - *Summaries & key dataset visualization*  
+- 05_analysis_1 - *Heatmap*  
+- 05_analysis_2 - *Volcano plot*  
+- 05_analysis_3 - *PCA plot*
+- 05_analysis_4 - *Linear model using broom*
+:::
+</div>
+---
+
+## Background - *Arabidopsis thaliana*
+
+:::: {.columns}
+
+::: {.column width="60%"}
+ATGen Project: cold stress transcriptomics with microarrays
+
+<div style="text-align:center; text-decoration:underline;">
+Dataset summary
+</div>
+
+::: {.incremental}
+- 60 samples  
+- 2 conditions  
+- 2 tissues  
+- 9 total timepoints  
+- ~21k probes → ~10k after cleaning 
+:::
+
+:::
+
+::: {.column width="40%"}
+
+
+![](https://www.oxinst.com/learning/uploads/inline-images/a-thaliana-fig01-20190307164222.jpg){width="70%"}
+
+
+:::
+
+::::
+
+---
+
+## Step 01 - Load  
+
+<div style="font-size:0.49em;">
+
+### Extract metadata
+```{.python code-line-numbers="5,6"}
+extract_metadata <- function(raw_lines) {
+  title_line <- raw_lines[str_detect(raw_lines, "^!Sample_title")]
+  gsm_line   <- raw_lines[str_detect(raw_lines, "^!Sample_geo_accession")]
+
+  title_clean <- str_remove(title_line, "^!Sample_title\t")
+  gsm_clean   <- str_remove(gsm_line, "^!Sample_geo_accession\t")
+}
+```
+
+### Parse metadata
+```r
+parse_title <- function(df) {
+  df |> mutate(
+    tissue    = str_extract(title, "(Shoots|Roots)")
+  )
+}
+```
+
+### Load numeric expression matrix
+```r
+gse5620 <- read.delim(file_5620, comment.char = "!", row.names = 1)
+gse5621 <- read.delim(file_5621, comment.char = "!", row.names = 1)
+expr_all <- cbind(gse5620, gse5621)
+```
+
+### Annotate probes
+```{.python code-line-numbers="4,8"}
+probe_to_gene <- AnnotationDbi::select(
+  ath1121501.db,
+  keys = rownames(expr_all),
+  columns = c("PROBEID","GENENAME","SYMBOL"),
+  keytype = "PROBEID"
+)
+
+expr_annotated <- left_join(
+  clean_names(probe_to_gene),
+  rownames_to_column(as.data.frame(expr_all), "probeid"),
+  by="probeid"
+)
+
+
+```
+</div>
+---
+
+## Step 02 – Clean {.scrollable}
+
+<div style="font-size:0.49em;">
+
+### Filter Uninformative Genes
+```{.python code-line-numbers="2,5"}
+expr_filtered <- expr_annotated |>
+  filter(!grepl("^AFFX", probeid))
+
+expr_filtered <- expr_filtered |>
+  filter(!is.na(symbol) & symbol != "")
+```
+
+### Log2 transform expression
+```{.python code-line-numbers="2"}
+gsm_cols <- grepl("^GSM", names(expr_filtered))
+expr_filtered[ , gsm_cols] <- log2(expr_filtered[ , gsm_cols] + 1)
+expr_numeric <- expr_filtered[ , gsm_cols]
+```
+
+### Remove low-variance genes
+```{.python code-line-numbers="2"}
+gene_variance   <- apply(expr_numeric, 1, var)
+variance_cutoff <- quantile(gene_variance, 0.20)
+expr_filtered   <- expr_filtered[gene_variance > variance_cutoff, ]
+```
+
+
+</div>
+
+---
+
+
+---
+
+## Step 03 - Augment  
+(placeholder slide)
+
+---
+
+## Step 04 - Describe  
+(placeholder slide for your summary + plot)
+
+---
+
+## Step 05 - Heatmap  
+(placeholder slide)
+
+---
+
+## Step 05 - Volcano Plot  
+(placeholder slide)
+
+---
+
+## Step 05 - PCA Plot  
+(placeholder slide)
+
+---
+
+## Step 05 - Linear Model (broom)  
+(placeholder slide)
+
+---
+
+# Thank you! {footer=false}

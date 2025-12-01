@@ -26,7 +26,7 @@ sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
 ```{r}
 # Keep only GSM expression columns i.e. the actual sample-level expression values for each sample.
 expr_only <- expr_filtered |> 
-  select(starts_with("GSM"))
+  dplyr::select(starts_with("GSM"))
 
 # The same gene symbol can appear multiple times because multiple probes may map to the same gene. make.unique() adds suffixes (".1", ".2", etc.) to ensure row names are unique and valid for downstream analyses.
 safe_symbols <- make.unique(expr_filtered$symbol)
@@ -76,5 +76,5 @@ expr_with_meta <- expr_with_meta |>
 ## 7. Save final dataset
 
 ```{r}
-readr::write_tsv(expr_with_meta, "../_raw/data/expression_with_metadata.tsv")
+readr::write_tsv(expr_with_meta, "../_raw/data/03_dat_aug.tsv")
 ```

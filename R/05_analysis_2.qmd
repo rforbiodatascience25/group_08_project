@@ -1,18 +1,44 @@
 ---
-title: "Group08 - 05_analysis_2"
-subtitle: "Volcano plot"
-author: "Julija"
-format: html
-editor: visual
+--- title: "Group08 - 05_analysis_2" subtitle: "Volcano plot" author: "Julija" format: html editor: visual ---
 ---
 
 ## Load packages
 
-```{r}
-library("tidyverse")
+```{r} library(tidyverse) library(ggplot2) library(ggrepel)}
 ```
 
 ## Load data
 
-```{r}
+```{r} expr_with_meta <- read_csv("../_raw/data/expression_with_metadata.tsv")}
+```
+
+```{r} # reorganising data from wide into long data to have genes and their expression in columns gene_columns <- setdiff(colnames(expr_with_meta), c("GSM", "title", "condition", "tissue", "timepoint", "replicate"))  long_data <- expr_with_meta |>     pivot_longer(cols = all_of(gene_columns),                 names_to = "gene",                 values_to = "expression")  View(expr_with_meta)}
+```
+
+## Selecting for shoots and roots
+
+```{r} # filtering the data by tissue to prepare for differential expression  shoots <- long_data |> filter(tissue == "Shoots") roots <- long_data |> filter(tissue == "Roots")}
+```
+
+## Differential expression
+
+```{r} # computing differential gene expression in tissue, taking into account conditions  comp_de <- function(dat) {   dat |> group_by(gene) |>      summarise(log2FC = log2(mean(expression[condition == "cold"]) / (expression[condition == "control"])),      pvalue = t.test(expression ~ condition)$p.value) |>     mutate(neglog10p = -log10(pvalue))}   shoots_de <- comp_de(shoots) roots_de <- comp_de(roots)}
+```
+
+## Volcano plot for gene expression in shoots
+
+```{r} ggplot(data = shoots_de, aes(x = log2FC, y = neglog10p)) +   geom_vline(xintercept = c(-1, 1), col = "gray", linetype = "dashed") +   geom_hline(yintercept = -log10(0.05), col = "gray", linetype = "dashed") +    geom_point(alpha = 0.7) +   labs(     title = "Volcano plot - gene expression in shoots in control vs cold",     x = expression("log"[2]*" fold change"), y = expression("-log"[10]*"p-value")   )}
+```
+
+There is too many data points, so the plot is not optimal. To adjust that, the expression will be marked as up/down-regulated or not-significant.
+
+```{r} res <- shoots_de |>    mutate(     sig = case_when(       pvalue < 0.05 & log2FC > 1  ~ "Upregulated",       pvalue < 0.05 & log2FC < -1 ~ "Downregulated",       TRUE ~ "Not significant"     ) )}
+```
+
+To
+
+```{r} #  gene_means <- long_data |>     group_by(gene) |>    summarise(mean_expr = mean(expression))  res_clean <- res |>    left_join(gene_means, by="gene") |>    filter(mean_expr > 1)   res$neglog10p_capped <- pmin(res$neglog10p, 10)  ggplot(res_clean, aes(log2FC, neglog10p_capped)) +   geom_point(aes(color = sig),              alpha = ifelse(res_clean$sig == "Not significant", 0.15, 0.8),              size = ifelse(res_clean$sig == "Not significant", 0.5, 1.5)) +   scale_color_manual(values = c(     "Upregulated"="#A30000",     "Downregulated"="#0000A3",     "Not significant"="gray"   )) +   geom_vline(xintercept = c(-1, 1), col = "gray", linetype = "dashed") +   scale_x_continuous(breaks = seq(-3, 5, 1)) +   theme_light() +   theme(     legend.position = "bottom"   ) +   ggtitle("Volcano plot - gene expression in shoots in control vs cold") +   labs(color = "Expression rate", x = expression("log"[2]*" fold change"), y = expression("-log"[10]*"p-value"))}
+```
+
+```{r} View(res_clean)}
 ```

@@ -72,5 +72,5 @@ expr_filtered <- expr_filtered[gene_variance > variance_cutoff, ]
 #   -log2 normalized values
 # This is the dataset that should be used for all downstream analyses:
 
-readr::write_tsv(expr_filtered, "../_raw/data/expression_filtered_normalized.tsv")
+readr::write_tsv(expr_filtered, "../_raw/data/02_dat_clean.tsv")
 ```
