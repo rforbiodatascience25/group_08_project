@@ -50,8 +50,7 @@ expr_with_meta <- left_join(expr_only_long, sample_metadata, by = "GSM")
 ## 4. Reorder columns
 
 ```{r}
-# Reorder the final dataset so metadata columns appear first,
-# followed by gene expression values and averaged values.
+# Reorder the final dataset so metadata columns appear first, followed by gene expression values and averaged values.
 expr_with_meta <- expr_with_meta |>
   dplyr::select(
     GSM,
@@ -73,7 +72,7 @@ expr_with_meta <- expr_with_meta |>
   ungroup()
 ```
 
-## 7. Save final dataset
+## 6. Save final dataset
 
 ```{r}
 readr::write_tsv(expr_with_meta, "../_raw/data/03_dat_aug.tsv")

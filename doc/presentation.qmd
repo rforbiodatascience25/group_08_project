@@ -111,11 +111,11 @@ expr_annotated <- left_join(
 </div>
 ---
 
-## Step 02 – Clean {.scrollable}
+## Step 02 - Clean 
 
-<div style="font-size:0.49em;">
+<div style="font-size:0.7em;">
 
-### Filter Uninformative Genes
+### Filter uninformative genes
 ```{.python code-line-numbers="2,5"}
 expr_filtered <- expr_annotated |>
   filter(!grepl("^AFFX", probeid))
@@ -138,16 +138,64 @@ variance_cutoff <- quantile(gene_variance, 0.20)
 expr_filtered   <- expr_filtered[gene_variance > variance_cutoff, ]
 ```
 
-
 </div>
 
+<div style="text-align:center;">
+
+### <span style="font-size:0.8em;">Now, our data is tidy!</span> {.fragment}
+
+### <span style="font-size:0.8em;">...and ready to be augmented!</span> {.fragment}
+
+</div>
 ---
 
+## Step 3 - Augment
+<div style="font-size:0.49em;">
 
----
+### Extract expression matrix
 
-## Step 03 - Augment  
-(placeholder slide)
+```{.python code-line-numbers="2,6"}
+expr_only <- expr_filtered |> 
+  dplyr::select(starts_with("GSM"))
+
+safe_symbols <- make.unique(expr_filtered$symbol)
+
+expr_only <- expr_only |>
+  mutate(gene = safe_symbols, .before = 1)
+```
+
+### Merge expression and metadata
+```{.python code-line-numbers="2,6"}
+expr_only_long <- expr_only |>
+  pivot_longer(cols = starts_with("GSM"),
+               names_to = "GSM",
+               values_to = "expression")
+
+expr_with_meta <- left_join(expr_only_long, sample_metadata, by = "GSM")
+```
+
+### Reorder columns
+```{.python code-line-numbers="9"}
+expr_with_meta <- expr_with_meta |>
+  dplyr::select(
+    GSM,
+    title,
+    condition,
+    tissue,
+    timepoint,
+    replicate,
+    dplyr::everything()
+  )
+```
+
+### Add averaged replicate values
+```{.python code-line-numbers="2,3"}
+expr_with_meta <- expr_with_meta |>
+  group_by(condition, tissue, timepoint, gene) |>
+  mutate(average = mean(expression)) |> # average is average expression over 2 replicates
+  ungroup()
+```
+</div>
 
 ---
 
