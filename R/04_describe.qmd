@@ -1,16 +1,174 @@
 ---
-title: "Group08 - 04_describe"
-author: "Eleni"
-format: html
+title: "04_describe"
+author: "Eleni&Dana"
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## Load packages
-
-```{r}   library("tidyverse")}
-```
-
-## Load data
+## 0. Load packages
 
 ```{r}
+library("tidyverse")
+library("janitor")
+```
+
+## 1. Load final dataset
+
+```{r}
+# Final enriched dataset created in previous steps
+expr_with_meta <- readr::read_tsv("../_raw/data/03_dat_aug.tsv")
+
+# Annotated table (used later for gene lookup)
+expr_annotated <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+
+```
+
+## 2. Overview of dataset structure
+
+```{r}
+# Look at the overall structure
+glimpse(expr_with_meta)
+
+# Number of samples
+n_samples <- nrow(expr_with_meta)
+
+# Number of genes (raw GSM columns)
+gene_cols <- grep("^GSM", names(expr_with_meta), value = TRUE)
+n_genes <- length(gene_cols)
+
+# Print basic information
+tibble(
+  total_samples = n_samples,
+  total_genes = n_genes
+)
+```
+
+## 3. Sample counts per condition, tissue and timepoint
+
+```{r}
+expr_with_meta |> count(condition)
+expr_with_meta |> count(tissue)
+expr_with_meta |> count(timepoint)
+
+```
+
+## 4. Combined table (condition × tissue × timepoint)
+
+```{r}
+expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  arrange(condition, tissue, timepoint)
+
+```
+
+## 7. Plot: **Sample Distribution by Condition × Timepoint × Tissue**
+
+```{r}
+plot_1 <- expr_with_meta |>
+  count(condition, tissue, timepoint) |>
+  ggplot(aes(x = timepoint, y = n, fill = condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ tissue) +
+  labs(
+    title = "Sample Distribution by Condition, Timepoint, and Tissue",
+    x = "Timepoint",
+    y = "Number of Samples",
+    fill = "Condition"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave("../results/04_key_plot_1.png", plot_1, width = 8, height = 5, dpi = 300)
+
+plot_1
+```
+
+## 6. Prepare factors for plotting
+
+```{r}
+expr_with_meta <- expr_with_meta |>
+  mutate(
+    gene = as.factor(gene),
+    condition = factor(condition, levels = c("control", "cold")),
+    tissue = factor(tissue, levels = c("Roots", "Shoots")),
+    timepoint = factor(timepoint,
+        levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h",
+                   "4.0h", "6.0h", "12.0h", "24.0h")),
+    replicate = as.factor(replicate)
+  )
+```
+
+## 7. Plot expression for one example gene: (AT)SRC2
+
+```{r}
+# Filter and prepare data
+plot2_data <- expr_with_meta |>
+  filter(gene == "(AT)SRC2") |>
+  distinct(average, .keep_all = TRUE)
+```
+
+## A. Compare expression between tissues (within conditions)
+
+```{r}
+plot2 <- ggplot(plot2_data,
+                aes(x = timepoint, y = average, color = tissue)) +
+  geom_point() +
+  facet_wrap(~condition) +
+  ggtitle("Average log10 expression of (AT)SRC2 between tissues and conditions") +
+  ylab("Log10 expression")
+
+plot2
+
+ggsave("../results/04_key_plot_2.png", plot1, width = 8, height = 5, dpi = 300)
+
+```
+
+## B. Compare expression between conditions (within tissues)
+
+```{r}
+plot3 <- ggplot(plot2_data,
+                aes(x = timepoint, y = average, color = condition)) +
+  geom_point() +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 within tissues across conditions") +
+  ylab("Log10 expression")
+
+plot3
+
+ggsave("../results/04_key_plot_3.png", plot3, width = 8, height = 5, dpi = 300)
+
+```
+
+## 8. What is known about (AT)SRC2?
+
+```{r}
+expr_annotated |>
+  select(genename, symbol) |>
+  filter(symbol == "(AT)SRC2")
+```
+
+## 9. Plot five random genes
+
+```{r}
+five_genes <- sample(unique(expr_with_meta$gene), 5)
+
+data_plot4 <- expr_with_meta |> filter(gene %in% five_genes)
+
+```
+
+```{r}
+plot4 <- ggplot(data_plot4,
+                aes(x = timepoint, y = average, color = gene)) +
+  geom_point() +
+  facet_wrap(condition ~ tissue) +
+  ggtitle("Average log10 expression of five randomly selected genes") +
+  ylab("Log10 expression")
+
+plot4
+ggsave("../results/04_key_plot_4.png", plot4, width = 8, height = 5, dpi = 300)
 ```

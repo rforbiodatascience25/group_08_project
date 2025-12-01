@@ -1,17 +1,80 @@
 ---
-title: "Group08 - 03_augment"
+title: "03_augment"
 author: "Eleni"
-format: html
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## Load packages
+## 0. Load packages
 
 ```{r}
 library("tidyverse")
+library("janitor")
 ```
 
-## Load data
+## 1. Load cleaned data
 
 ```{r}
+expr_filtered <- readr::read_tsv("../_raw/data/expression_filtered_normalized.tsv")
+sample_metadata <- readr::read_tsv("../_raw/data/sample_metadata.tsv")
+```
+
+## 2. Extract expression matrix
+
+```{r}
+# Keep only GSM expression columns i.e. the actual sample-level expression values for each sample.
+expr_only <- expr_filtered |> 
+  dplyr::select(starts_with("GSM"))
+
+# The same gene symbol can appear multiple times because multiple probes may map to the same gene. make.unique() adds suffixes (".1", ".2", etc.) to ensure row names are unique and valid for downstream analyses.
+safe_symbols <- make.unique(expr_filtered$symbol)
+
+# Assign the unique gene symbols as row names of the expression matrix.
+expr_only <- expr_only |>
+  mutate(gene = safe_symbols, .before = 1)
+```
+
+## 3. Merge expression and meta data
+
+```{r}
+expr_only_long <- expr_only |>
+  pivot_longer(cols = starts_with("GSM"),
+               names_to = "GSM",
+               values_to = "expression")
+
+expr_with_meta <- left_join(expr_only_long, sample_metadata, by = "GSM")
+```
+
+## 4. Reorder columns
+
+```{r}
+# Reorder the final dataset so metadata columns appear first,
+# followed by gene expression values and averaged values.
+expr_with_meta <- expr_with_meta |>
+  dplyr::select(
+    GSM,
+    title,
+    condition,
+    tissue,
+    timepoint,
+    replicate,
+    dplyr::everything()
+  )
+```
+
+## 5. Add averaged replicate values
+
+```{r}
+expr_with_meta <- expr_with_meta |>
+  group_by(condition, tissue, timepoint, gene) |>
+  mutate(average = mean(expression)) |> # average is average expression over 2 replicates
+  ungroup()
+```
+
+## 7. Save final dataset
+
+```{r}
+readr::write_tsv(expr_with_meta, "../_raw/data/03_dat_aug.tsv")
 ```

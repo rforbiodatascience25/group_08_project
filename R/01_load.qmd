@@ -1,166 +1,200 @@
 ---
-title: "Group08 - 01_load"
+title: "01_load"
 author: "Eleni"
-format: html
+format:
+  html:
+    output-dir: results
 editor: visual
 ---
 
-## 1. Load packages
+## 0. Load required packages
 
 ```{r}
-library("tidyverse")
+
+# Install required packages only if missing
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+required <- c("tidyverse", "stringr", "janitor", 
+              "AnnotationDbi", "ath1121501.db")
+
+for (pkg in required) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    BiocManager::install(pkg, update = FALSE, ask = FALSE)
+  }
+}
+
+library(tidyverse)
+library(stringr) # for string operations (pattern matching, cleaning text, etc.)
+library(janitor) # for cleaning column names and simple data cleaning functions, helps tidy data frames
+library(AnnotationDbi) # provides functions to map probe IDs to gene IDs toretrieve annotations and work with Bioconductor genomic databases.
+library(ath1121501.db) # Affymetrix Arabidopsis ATH1 annotation database
 ```
 
-## 2. Load the two GEO expression datasets
+## 1. **Read Original Series Matrix Files (With Metadata)**
 
 ```{r}
-# Read the first GEO series matrix (GSE5620)
-# - comment.char = "!" removes all metadata lines (starting with "!")
-# - row.names = 1 uses the first column (ID_REF) as row names (genes)
-# - header = TRUE keeps the sample names as column names
-# - sep = "\t" because GEO matrices are tab-separated
+#These GEO Series Matrix files contain:
+#   - an expression matrix (gene probes × samples)
+#   - multiple metadata lines (starting with '!', '#', or '^')
+# Because of this, we read them line-by-line instead of loading as a table.
 
-gse5620 <- read.delim(
-  "../_raw/data/GSE5620_series_matrix.txt.gz", # remember to use relative paths, not your local path
-  header = TRUE,
-  sep = "\t",
-  comment.char = "!",
-  row.names = 1
+file_5620 <- "../_raw/GSE5620_series_matrix.txt.gz" # CONTROL
+file_5621 <- "../_raw/GSE5621_series_matrix.txt.gz" # STRESS
+
+#Read the files as plain text (line by line) so metadata can be parsed
+raw_5620 <- readLines(file_5620)
+raw_5621 <- readLines(file_5621)
+```
+
+## **2. Extract Sample Metadata (Titles + GSM IDs)**
+
+```{r}
+# This function extracts sample info (titles + GSM IDs) from the GEO file.
+# It now also looks inside each sample title and automatically assigns
+# a condition based on whether the title contains "Control" or "Cold".
+extract_metadata <- function(raw_lines) {
+  
+  # Find the line with all sample titles
+  title_line <- raw_lines[str_detect(raw_lines, "^!Sample_title")]
+  
+  # Find the line with all GSM IDs
+  gsm_line <- raw_lines[str_detect(raw_lines, "^!Sample_geo_accession")]
+  
+  # Remove the part before the first tab so we keep only values
+  title_clean <- str_remove(title_line, "^!Sample_title\t")
+  gsm_clean   <- str_remove(gsm_line, "^!Sample_geo_accession\t")
+  
+  # Split into individual entries
+  titles <- str_split(title_clean, "\t")[[1]]
+  gsm    <- str_split(gsm_clean,   "\t")[[1]]
+  
+  # Remove quotes
+  titles <- str_remove_all(titles, '"')
+  gsm    <- str_remove_all(gsm, '"')
+  
+  # Determine condition from the title text
+  # We convert titles to lowercase to make matching easier.
+  condition <- case_when(
+    str_detect(tolower(titles), "control") ~ "control",
+    str_detect(tolower(titles), "cold")    ~ "cold",
+    TRUE ~ "unknown"   # fallback if neither appears
+  )
+  
+  # Return the metadata table
+  tibble(GSM = gsm, title = titles, condition = condition)
+}
+
+# Extract metadata from each dataset
+meta_5620 <- extract_metadata(raw_5620)
+meta_5621 <- extract_metadata(raw_5621)
+
+```
+
+## 3. **Parse Metadata Into Structured Variables**
+
+```{r}
+# This function extracts useful pieces of information from the sample title.
+# Each title contains the tissue type, the timepoint, and the replicate number.
+# We pull these out using pattern matching.
+parse_title <- function(df) {
+  df |>
+    mutate(
+      # Extract whether the sample is from Shoots or Roots
+      tissue = str_extract(title, "(Shoots|Roots)"),
+
+      # Extract the timepoint (e.g., "0h", "6.0h")
+      timepoint = str_extract(title, "[0-9.]+h"),
+
+      # Extract the replicate number (e.g., "Rep1")
+      replicate = str_extract(title, "Rep[0-9]")
+      
+      # No need for a treatment column here,
+      # because we already have a clean 'condition' column.
+    )
+}
+
+# Apply the parsing function to the metadata for each dataset
+meta_5620 <- parse_title(meta_5620)
+meta_5621 <- parse_title(meta_5621)
+
+# Combine the two metadata tables into one complete table
+sample_metadata <- bind_rows(meta_5620, meta_5621)
+
+```
+
+## 4. Save clean metadata table
+
+```{r}
+# Ensure _raw/data directory exists
+if (!dir.exists("../_raw/data")) dir.create("../_raw/data", recursive = TRUE)
+
+# Save clean metadata as TSV (recommended for bioinformatics)
+readr::write_tsv(sample_metadata, "../_raw/data/sample_metadata.tsv")
+
+
+```
+
+## 5. **Load Expression Matrices (numeric table only)**
+
+```{r}
+# These two lines read the numeric expression matrices from the original GEO Series Matrix files. By using comment.char = "!", we tell R to skip all lines starting with "!", which are metadata lines (we have already extracted what we need).
+# Only the actual expression table (probe IDs + expression values) is loaded.
+# row.names = 1 sets the first column (the probe IDs) as row names.
+
+gse5620 <- read.delim(file_5620, comment.char = "!", row.names = 1)
+gse5621 <- read.delim(file_5621, comment.char = "!", row.names = 1)
+
+# Combine the two datasets side by side.
+# The rows are probe IDs, so cbind() matches them automatically.
+# This gives us one full expression matrix with all samples.
+expr_all <- cbind(gse5620, gse5621)
+
+```
+
+## **6. Annotate Probe IDs → Gene Symbols**
+
+```{r}
+# 1. Get annotation
+probe_to_gene <- AnnotationDbi::select(
+  ath1121501.db,
+  keys = rownames(expr_all),
+  columns = c("PROBEID", "GENENAME", "SYMBOL"),
+  keytype = "PROBEID"
 )
 
-gse5621 <- read.delim(
-  "../_raw/data/GSE5621_series_matrix.txt.gz", # remember to use relative paths, not your local path
-  header = TRUE,
-  sep = "\t",
-  comment.char = "!",
-  row.names = 1
+# 2. Clean column names → probeid, genename, symbol
+probe_to_gene <- janitor::clean_names(probe_to_gene)
+
+# 3. Remove duplicated probe IDs (rare but safe)
+probe_to_gene <- dplyr::distinct(probe_to_gene, probeid, .keep_all = TRUE)
+
+# 4. Prepare expression matrix with probeid column
+expr_all2 <- expr_all |>
+  as.data.frame() |>
+  tibble::rownames_to_column("probeid")    # <- uses SAME NAME as annotation
+
+# 5. Join directly (no rename needed)
+expr_annotated <- dplyr::left_join(
+  probe_to_gene,
+  expr_all2,
+  by = "probeid"
 )
+
 ```
 
-## 3. Create condition labels for each dataset and combine athem in the same order as columns
+## 7. **Save Annotated Expression Matrix**
 
 ```{r}
-# GSE5620 = "normal" samples
-# GSE5621 = "stress" samples
-# Create a condition label for each sample  (normal vs stress conditions)
-# ncol(gse5620) = number of samples in this dataset (37)
-# ncol(gse5621) = number of samples in this dataset (37)
-# rep("normal", ...) repeats the word "normal" for each sample (column)
-# rep("stress", ...) repeats the word "normal" for each sample (column)
+# Save the fully annotated expression matrix before filtering.
+# This file includes:
+#   - probe IDs
+#   - gene symbols
+#   - gene names
+#   - expression values for all 60 samples
+#
+# This serves as a complete reference version of the dataset.
+# The filtered version (created in Step 8) will be used for downstream analysis (PCA, differential expression, clustering, heatmaps, etc.).
 
-cond_5620 <- rep("normal", ncol(gse5620)) 
-cond_5621 <- rep("stress", ncol(gse5621))
-
-conditions <- c(cond_5620, cond_5621)
-```
-
-## 4. Combine both expression matrices side-by-side
-
-```{r}
-# Both datasets have the same genes in the same order.
-# Combining columns gives us a single large matrix:
-# genes = rows, samples = columns
-
-combined_expr <- cbind(gse5620, gse5621)
-```
-
-## 5. Convert the expression matrix into a tidy format
-
-```{r}
-# Here im changing the layout of the table, was samples in columns and expression levels of each gene as row. Lets reverse that so the condition can be add as a column. 
-# Goal is to create ONE final table where:
-# each row = one sample
-# each column = one gene
-# plus a column for the sample name
-# plus a column for the condition (normal/stress)
-
-# Steps:
-# Transpose with t() so samples become rows.
-# Convert to data frame.
-# Add sample ID as a column.
-# Add condition labels.
-# Move label columns to the front for readability.
-
-final_data <- combined_expr |>
-  t() |> # transpose → samples (rows) × genes (columns) 
-  as.data.frame() |> # convert matrix → data frame 
-  rownames_to_column("sample") |> # add sample name column 
-  mutate(condition = conditions) |> # add normal/stress label 
-  relocate(sample, condition) # move sample + condition to the front
-```
-
-## 6. Convert all gene columns to numeric
-
-```{r}
-# This ensures all expression values are real numbers before log2-normalization.
-# If any column contains non-numeric entries (e.g. "NA", " ", "."), R will warn: "NAs introduced by coercion"
-# This is a quality-control check
-
-final_data_numeric <- final_data |>
-  mutate(across(-c(sample, condition), ~ as.numeric(.x)))
-```
-
-## 7. Log2-normalize gene expression
-
-```{r}
-# Raw microarray intensities have a huge dynamic range (0–20,000+).
-# Log2 transformation compresses this range 
-# This step prepares the data for PCA, clustering, and all downstream analyses.
-
-clean_data <- final_data_numeric |>
-  mutate(across(-c(sample, condition), ~ log2(.x + 1)))
-```
-
-## 8. Save the final tidy dataset as ONE CSV file
-
-```{r}
-# clean_sample_expression.csv contains:
-# one row per sample
-# gene expression values (many columns)
-# condition column
-# this is the file we ll use for all downstream analysis
-
-# row.names = FALSE prevents R from adding an extra first column
-# we already have a 'sample' column, so we don't want an additional unnecessary row-name column).
-
-
-write.csv(
-  clean_data,
-  "../_raw/data/clean_sample_expression.csv", # remember to save the data in appropriate folder (data for now, since results will be html files)
-  row.names = FALSE
-)
-```
-
-## Test1: expression of one gene by condition
-
-```{r}
-gene <- "244901_at"
-
-ggplot(clean_data, aes(x = condition, y = .data[[gene]], fill = condition)) +
-  geom_boxplot() +
-  labs(
-    title = paste("Expression of", gene, "by condition"),
-    x = "Condition",
-    y = "log2(Expression +1)"
-  )
-```
-
-## Test2: density of all genes by condition
-
-```{r}
-clean_data_long <- clean_data |>
-  pivot_longer(
-    cols = -c(sample, condition),
-    names_to = "gene",
-    values_to = "expression"
-  )
-
-ggplot(clean_data_long, aes(x = expression, color = condition)) +
-  geom_density() +
-  theme_minimal() +
-  labs(
-    title = "Density of ALL log2-Normalized Gene Expression Values",
-    x = "log2(Expression + 1)",
-    y = "Density"
-  )
+readr::write_tsv(expr_annotated, "../_raw/data/01_dat_load.tsv")
 ```

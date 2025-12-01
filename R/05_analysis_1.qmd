@@ -1,18 +1,563 @@
 ---
-title: "Group08 - 05_analysis_1"
-subtitle: "Heat map plot"
-author: "Vakare"
-format: revealjs
+title: "Group08 - 05_analysis_4"
+subtitle: "lm() via broom"
+author: "Dana"
+format: html
 editor: visual
 ---
+
+# Getting ready
 
 ## Load packages
 
 ```{r}
 library("tidyverse")
+library("purrr")
+library("broom")
+library("stringr")
 ```
 
 ## Load data
 
 ```{r}
+data <- read_tsv("../_raw/data/03_dat_aug.tsv")
+expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load.tsv")
 ```
+
+## Prepare the data
+
+```{r}
+# set to factors and set levels in the preferred order
+data$gene <- as.factor(data$gene)
+data$condition <- factor(data$condition,
+                         levels = c("control", "cold"))
+data$tissue <- factor(data$tissue,
+                      levels = c("Roots", "Shoots"))
+data$timepoint <- factor(data$timepoint,
+                            levels = c("0h", "0.25h", "0.5h", "1.0h", "3.0h", 
+                                       "4.0h","6.0h", "12.0h", "24.0h"))
+data$replicate <- as.factor(data$replicate)
+
+# remove h in timepoints and convert to numeric
+data$time <- as.numeric(sub("h", "", data$timepoint))
+
+```
+
+# Small test - applying linear model to one gene (e.g. (AT)SRC2)
+
+## Get the data for (AT)SRC2 only
+
+```{r}
+small_test_ATSRC2 <- data |>  
+  filter(gene == "(AT)SRC2")
+small_test_ATSRC2
+```
+
+### Plot ATSRC2
+
+```{r}
+ggplot(small_test_ATSRC2, aes(x = time,
+                              y = expression,
+                              color = condition)) +
+  geom_point() + 
+  geom_line(aes(y = average)) +
+  facet_wrap(~tissue) +
+  ggtitle("Average log10 expression of (AT)SRC2 between both conditions, in both tissues") +
+  ylab("Log10 expression")
+```
+
+## Apply linear model to (AT)SRC2
+
+```{r}
+# lm for ATSRC2 expression explained by condition, tissue type and timepoint
+model_ATSRC2 <- small_test_ATSRC2 |>
+  group_by(condition, tissue, timepoint) |>
+  lm(expression ~ condition * tissue * timepoint, data = _)
+print("lm() output:")
+model_ATSRC2 |>
+  pluck("coefficients")
+
+
+print("summary() output:")
+model_ATSRC2 |>
+  summary()
+```
+
+At intercept, i.e. control, roots at 0 hrs, (AT)SRC2 expression is statistically significantly different from 0. However, this is not biologically meaningful as gene expression is expected.
+
+There are missing values for the cold condition at timepoints 0 and 0.25 hrs for both roots and shoots. This affects the model and makes it unbalanced and thus some effects are confounded.
+
+Control and cold gene expression is statistically significant (p\<0.05), as is root vs shoot tissue gene expression (p\<0.05). However, not all timepoints are statistically significantly different. This is for one-way interactions and thus the effects for tissues, timepoints and conditions are pooled.
+
+The three-way interactions give best biologically significant results since each condition is taken into account. However, as some data is missing, some interactions cannot be estimated (hence NA). Only two sets of interactions have p\<0.05 and thus gene expression is statistically significantly different. These are control vs cold & root vs shoot at timepoint 1 hr vs 0 hrs. However, this highlights that ANOVA is not suitable for this data. Need to test a time-series model, in order to test whether cold vs control alters the *shape* of the time curve, within each tissue (root / shoot).
+
+## Polynomial time model for (AT)SRC2
+
+### Create model
+
+```{r}
+model <- lm(expression ~ condition * poly(time, 3) * tissue, data = small_test_ATSRC2)
+summary(model)
+```
+
+Polynomial time allows to test whether gene expression changes over time in a smooth way, and whether that curve is different between conditions and tissues.
+
+Since p-value for conditioncold is below 0.05, there is a statistically significant difference between control and cold conditions [at time 0 hrs]{.underline}. Since poly(time, 3)1 and 2 are also statistically significant (p\<0.05), the gene expression between conditions across time is also different, i.e. there is a curve / pattern to how the gene expression occurs over time. Additionally, since conditioncold:poly(time, 3)1 to 3 are all significant, the two conditions have different curves over time.
+
+Since tissueShoots is significant, there is a difference in gene expressions between roots and shoots at [time 0 hrs]{.underline}. However, there is weak evidence that the gene expression dynamics are different in roots and shoots at different timepoints, since poly(time, 3)1:tissueShoots (until poly 3) are not all statistically significant i.e. p-value is not \<0.05 for all 3 polynomials.
+
+Since all three-way interaction terms are non-significant (p\>0.05), there is no statistically significant interactions between condition x tissue x time. Therefore, while the cold changes the time trend, and shoots vs roots differ slightly in gene expression patterns, the cold condition does not affect shoots differently from roots in terms of time response.
+
+### Plot model
+
+```{r}
+small_test_ATSRC2$fitted <- predict(model)
+
+plot4 <- ggplot(small_test_ATSRC2, 
+                aes(x = time, 
+                    y = expression, 
+                    color = condition)) +
+  geom_point() +
+  geom_line(aes(y = fitted)) +
+  facet_wrap(~ tissue) +
+  ylab("Gene expession (log10 adjusted)") +
+  xlab("Time (hrs)") +
+  ggtitle("(AT)SRC2 experssion (dots) and its polynomial model prediction (curve)\n across conditions and tissue types")
+
+plot4
+```
+
+## Applying polynomial model to all genes via nested application of lm()
+
+## Create nested dataframe
+
+```{r}
+nested_data <- data |>
+  group_by(gene) |>
+  nest() |> 
+  ungroup()
+
+nested_data
+```
+
+```{r}
+# check
+nested_data |>
+  filter(gene == "(AT)SRC2") |> 
+  pull(data)
+```
+
+## Apply model_object to nested data
+
+```{r}
+nested_data <- nested_data |> 
+  group_by(gene) |> 
+  mutate(model_object = map(.x = data,
+                            .f = ~lm(formula = expression ~ condition * poly(time, 3) * tissue, data = .x)))
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "(AT)SRC2") |> 
+  pull(model_object)
+```
+
+```{r}
+# tidy using broom
+nested_data <- nested_data |> 
+  mutate(model_object_tidy = map(.x = model_object,
+                                 .f = ~tidy(x = .x,
+                                            conf.int = TRUE,
+                                            conf.level = 0.95)))
+
+nested_data
+```
+
+```{r}
+# check
+nested_data |> 
+  filter(gene == "(AT)SRC2") |> 
+  pull(model_object_tidy)
+```
+
+```{r}
+# unpack the nested models
+data_estimates <- nested_data |>
+  unnest(model_object_tidy) |> 
+  filter(term != "(Intercept)") |> 
+  select(gene, term, estimate, p.value, conf.low, conf.high) |> 
+  ungroup()
+data_estimates
+```
+
+```{r}
+# add q value
+data_estimates <- data_estimates |>
+  mutate(q.value = p.adjust(p.value),
+         is_significant = case_when(q.value <= 0.05 ~ "yes",
+                                    q.value > 0.05 ~ "no"))
+data_estimates
+```
+
+## Select statistically significant genes
+
+```{r}
+significant_data_estimates <- data_estimates |>
+  filter(is_significant == "yes") |> 
+  select(gene, term, estimate, p.value, q.value)
+significant_data_estimates
+```
+
+```{r}
+raw_data <- nested_data |> select(gene, data) |> unnest(data)
+
+annotated_sig_results <- raw_data |>
+  left_join(data_estimates |> filter(is_significant == "yes"),
+            by = "gene",
+            relationship = "many-to-many")
+
+write_csv(annotated_sig_results, "../_raw/data/05_analysis_4_results.tsv")
+```
+
+# Forest plot
+
+## Plot allllll the genes
+
+```{r}
+forest_plot <- data_estimates |> 
+  filter(is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates \nacross control and cold condtions, within roots and shoots")
+forest_plot
+```
+
+Too many genes!
+
+```{r}
+# check dimensions
+dim(significant_data_estimates)
+```
+
+There are 9980 entries to be plotted. That's too many for a Forest plot. Better investigate heatmaps, PCA or just plot top 20 in terms of absolute estimate.
+
+## Try plotting p\<0.01 to see if there are less genes and plot is more interpretable
+
+```{r}
+# instead of plotting q value <0.05, check 0.01:
+forest_plot_q_value <- data_estimates |>
+  filter(q.value < 0.01 & is_significant == "yes") |> 
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point() +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 1)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates \nacross normal and stressed condtions")
+forest_plot_q_value
+```
+
+```{r}
+dim(data_estimates |>
+  filter(q.value < 0.01 & is_significant == "yes"))
+```
+
+Still too big, there are 9099 rows!
+
+## Try top 20 coefficients in Forest plot
+
+### All coefficients allowed
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+# choose top 20 terms by absolute effect size i.e. not top 20 genes, but 20 coefficients
+# this allows to find which model terms have the strongest effects across all genes
+topN <- 20
+
+forest_plot_top20 <- data_estimates |>
+  filter(is_significant == "yes") |>
+  slice_max(order_by = abs(estimate), n = topN) |>
+  ggplot(aes(
+    x = estimate,
+    y = fct_reorder(gene, estimate),
+    xmin = conf.low,
+    xmax = conf.high,
+    colour = term
+  )) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position="bottom")+
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       title = "Statistically significant gene expression estimates across control and \ncold conditions, within roots and shoots, for genes of top 20 highest \nabsolute estimate value",
+       colour = "Model terms") 
+
+forest_plot_top20
+```
+
+Most of the genes with the greatest estimate effect shows the gene is upregulated with time in the cold condition (conditioncold:poly(time, 3)1).
+
+### Plot all genes for cold × time × tissue interaction (i.e. limit the allowed coefficients)
+
+```{r}
+# choose the three way interaction 
+cold_time_tissue <- data_estimates |>
+  filter(str_detect(term, "conditioncold:poly\\(time, 3\\).*:tissue")) # * refers to 1, 2 and 3 polynomials
+
+# filter only the statistically significant ones
+cold_time_tissue_sig <- cold_time_tissue |>
+  filter(is_significant == "yes")
+```
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+
+forest_plot_cold_time_tissue <- cold_time_tissue_sig |>
+  ggplot(aes(
+    x = estimate,
+    y = fct_reorder(gene, estimate),
+    xmin = conf.low,
+    xmax = conf.high,
+    colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across all genes",
+       colour = "Model term")
+
+forest_plot_cold_time_tissue
+```
+
+Many genes! most common colour is that for conditioncold:poly(time, 3)1:tissueShoots so it is most commonly a statistically significant term in the model.
+
+#### Find genes affected the most by the cold × time × tissue interaction
+
+```{r}
+forest_plot_top20_interaction <- cold_time_tissue_sig |>
+  slice_max(order_by = abs(estimate), n = 20)
+forest_plot_top20_interaction
+```
+
+```{r}
+#| fig-height: 10
+#| fig-width: 10
+forest_plot_cold_time_tissue_top20 <- forest_plot_top20_interaction |>
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high,
+             colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(ncol = 2)) +
+  labs(x = "Estimates (95% CI)",
+       y = "",
+       title = "Cold × Time × Tissue interaction effects across top 20 genes",
+       colour = "Model term")
+
+forest_plot_cold_time_tissue_top20
+```
+
+#### Find the top 20 genes' roles and their estimate effects
+
+```{r}
+top20_gene_names <- forest_plot_top20_interaction |>
+  pull(gene)
+top20_gene_names
+```
+
+```{r}
+expr_annotated_gene_info <- expr_annotated |>
+  select(genename, symbol) |>
+  rename("gene" = "symbol")
+
+top20_gene_data <- expr_annotated_gene_info |>
+  filter(gene %in% top20_gene_names)
+
+top20_gene_data_and_estimates <- left_join(top20_gene_data,
+                                           forest_plot_top20_interaction,
+                                           by = "gene")
+  
+top20_gene_data_and_estimates <- top20_gene_data_and_estimates |>
+  select(gene, genename, estimate, term) |>
+  arrange(estimate)
+top20_gene_data_and_estimates
+```
+
+Some of these genes are known to be related to cold or other stresses! For example, LTI30 gene is overexpressed and it is annotated as related to freeze tolerance.
+
+ATGPT2 is greatly upregulated according to conditioncold:poly(time, 3)1:tissueShoots model term, but greatly downregulated according to conditioncold:poly(time, 3)2:tissueShoots model term. This can be explained by the fact that ATGPT2 might be upregulated at some times (driven by the positive first-basis effect) but downregulated at other times (driven by the negative second-basis effect).
+
+#### Plot predicted trajectories for ATGPT2 using the model
+
+```{r}
+# extract the model and original data for that gene
+ATGPT2_model <- (nested_data |>
+  filter(gene == "ATGPT2") |>
+  pull(model_object))[[1]]
+
+ATGPT2_data <- (nested_data |>
+  filter(gene == "ATGPT2") |>
+  pull(data))[[1]]
+
+# create time grid within observed range (0 to 24 hrs) for the polynomial model to fit the polynomial time up to ^3
+time_grid <- tibble(time = seq(min(ATGPT2_data$time, na.rm = TRUE),
+                               max(ATGPT2_data$time, na.rm = TRUE),
+                               length.out = 200))
+
+
+# newdata grid for predictions: both conditions and tissues
+newdata <- time_grid |>
+  crossing(condition = unique(ATGPT2_data$condition), # cross condition (cold and control) against tissue (root and shoot) to create a matrix
+           tissue = unique(ATGPT2_data$tissue))
+
+
+# predict with se.fit to get CIs
+pred <- predict(ATGPT2_model, newdata = newdata, se.fit = TRUE)
+
+newdata <- newdata |>
+  mutate(fit = pred$fit,
+         se = pred$se.fit,
+         lower = fit - 1.96 * se,
+         upper = fit + 1.96 * se)
+```
+
+```{r}
+ggplot(newdata, aes(x = time, 
+                    y = fit, 
+                    color = condition)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = lower, 
+                  ymax = upper, 
+                  fill = condition), alpha = 0.15, color = NA) +
+  facet_wrap(~ tissue) +
+  labs(title = str_c("ATGPT2: model predicted expression over time (Shaded = 95% CI)"),
+       y = "Predicted expression", x = "Time") +
+  theme_minimal(base_size = 14)
+```
+
+So, it is not weird that ATGPT2 has both a large positive and negative estimate for the two polynomial times - the expression pattern is essentially opposite in shoots under cold and control conditions. There is very little difference in the gene expression over time in roots between conditions, however.
+
+### Look for all genes involved in cold and/or stress according to gene annotations
+
+```{r}
+key_words <- c("cold", "stress")
+
+# use OR logic
+cold_or_stress <- expr_annotated_gene_info |>
+  filter(str_detect(genename, str_c(key_words, collapse = "|")))
+cold_or_stress
+```
+
+There are 294 genes that are annotated with words "cold" or "stress".
+
+```{r}
+# use AND logic
+cold_and_stress <- expr_annotated_gene_info |>
+  filter(map_lgl(genename, ~ all(str_detect(.x, key_words)))) 
+cold_and_stress
+```
+
+32 genes that are annotated mentioning "cold" and "stress".
+
+```{r}
+# find the names
+cold_and_stress_gene_names <- cold_and_stress$gene
+```
+
+```{r}
+#| fig-height: 14
+#| fig-width: 12
+# plot model results as Forest plot for these 32 genes
+forest_cold_and_stress_plot <- data_estimates |> 
+  filter(is_significant == "yes") |> 
+  filter(gene %in% cold_and_stress_gene_names) |>
+  ggplot(aes(x = estimate,
+             y = fct_reorder(gene, estimate),
+             xmin = conf.low,
+             xmax = conf.high,
+             colour = term)) +
+  geom_vline(xintercept = 0) +
+  geom_errorbar(orientation = "y") +
+  geom_point(size = 3) +
+  theme_minimal(base_size = 17) +
+  theme(legend.position="bottom") +
+  guides(colour = guide_legend(ncol = 3)) +
+  labs(x = "Estimates (95% CIs)",
+       y = "",
+       colour = "Model term",
+       title = "Statistically significant gene expression estimates across control and cold condtions, \nwithin roots and shoots, for known cold and stress annotated genes")
+forest_cold_and_stress_plot
+```
+
+Some genes have multiple data entries for estimates. This is due to the model having up to three way interactions. All of these genes have statistically significantly different gene expression across tissues, however the estimate effect is among smallest. Some terms including poly(time, 3) have both positive and negative estimate effects. This is normal since the polynomial time terms assume linear, squared or cubic gene expression i.e. genes could be down or upregulated across time.
+
+#### Compare the genes annotated as cold or stress with genes found by the model
+
+Are all the genes found via annotations statistically significantly up- or down-regulated according to the model?
+
+```{r}
+# annotated gene names
+print(str_c("Annotated genes have ", length(cold_and_stress_gene_names), " entries"))
+
+# model significant gene names
+model_gene_names_df <- data_estimates |> 
+  filter(is_significant == "yes") |>
+  select(gene)
+
+model_gene_names <- as.character(unique(model_gene_names_df$gene))
+
+print(str_c("Model genes have ", length(model_gene_names), " entries"))
+
+print("Annotated  gene names that are present in the model are:")
+present_genes <- intersect(cold_and_stress_gene_names, model_gene_names)
+present_genes
+
+```
+
+```{r}
+absent_genes <- setdiff(cold_and_stress_gene_names, model_gene_names)
+absent_genes
+
+absent_genes_significance <- data_estimates |>
+  filter(gene == absent_genes) 
+absent_genes_significance
+```
+
+Four out of seven genes are found in the data estimates dataframe and are not statistically significant. However, some genes are missing from the dataframe.
+
+```{r}
+print("genes missing from originally loaded dataframe are:")
+absent_genes[!(absent_genes %in% data_estimates$gene)]
+```
+
+These three genes are missing from cleaned dataset due to their low variance. See 02_clean section 4. Thus, they are also not significantly up- or down-regulated.
