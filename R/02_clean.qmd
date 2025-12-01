@@ -11,7 +11,7 @@ editor: visual
 
 ```{r}
 library("tidyverse")
-library(janitor)
+library("janitor")
 ```
 
 ## 1. Load data produced in 01_load
