@@ -20,8 +20,8 @@ library("stringr")
 ## Load data
 
 ```{r}
-data <- read_tsv("../_raw/data/expression_with_metadata.tsv")
-expr_annotated <- readr::read_tsv("../_raw/data/expression_annotated.tsv")
+data <- read_tsv("../_raw/data/03_dat_aug.tsv")
+expr_annotated <- readr::read_tsv("../_raw/data/01_dat_load.tsv")
 ```
 
 ## Prepare the data
@@ -218,7 +218,7 @@ annotated_sig_results <- raw_data |>
             by = "gene",
             relationship = "many-to-many")
 
-write_csv(annotated_sig_results, "../_raw/data/05_analysis_4_results.csv")
+write_csv(annotated_sig_results, "../_raw/data/05_analysis_4_results.tsv")
 ```
 
 # Forest plot
