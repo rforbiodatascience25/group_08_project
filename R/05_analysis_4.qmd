@@ -11,13 +11,15 @@ editor: visual
 ```{r}
 library("tidyverse")
 library("broom")
+library("janitor")
 ```
 
 ## Load data
 
 ```{r}
-clean_data <- read_tsv("../_raw/data/05_analysis_1_results.tsv")
+clean_data <- read_tsv("../_raw/data/03_dat_aug.tsv")
 clean_data
+
 ```
 
 ## **Create a PCA object**
@@ -27,9 +29,52 @@ First, we run PCA and store the result in a variable called `pca_data`. To use t
 Second, we standardize the numeric variables (gene expression values) before performing PCA to make their scales comparable. We do this by setting the argument `scale = TRUE` inside `prcomp()`.
 
 ```{r}
-pca_fit <- clean_data |> 
-  select_if(is.numeric) |> # retain only numeric columns as prcomp() can only work on numeric data
-  prcomp(scale = TRUE) # do PCA on scaled data (which has zero mean and unit variance for every variable i.e. every variable contributes equally to the PCA) 
+# 1. Make sure expression is numeric
+clean_data <- clean_data |>
+  mutate(expression = as.numeric(expression))
+
+# 2. Drop rows with missing genes or samples (optional but safe)
+clean_data <- clean_data |>
+  filter(!is.na(gene), !is.na(GSM))
+
+# 3. Pivot wider: genes become columns, expression fills the values
+clean_wide <- clean_data |>
+  pivot_wider(
+    names_from = gene, 
+    values_from = expression,
+    values_fill = list(expression = 0)   # replace missing expression with 0
+  )
+```
+
+```{r}
+# 1. Make sure expression is numeric
+clean_data <- clean_data |>
+  mutate(expression = as.numeric(expression))
+
+# 2. Drop rows with missing genes or samples (optional but safe)
+clean_data <- clean_data |>
+  filter(!is.na(gene), !is.na(sample))
+
+# 3. Pivot wider: genes become columns, expression fills the values
+clean_wide <- clean_data |>
+  pivot_wider(
+    names_from = gene, 
+    values_from = expression,
+    values_fill = list(expression = 0)   # replace missing expression with 0
+  )
+
+
+clean_wide <- clean_data |>
+  pivot_wider(
+    names_from = gene,
+    values_from = expression,
+    values_fill = list(expression = 0)   # must be a named list
+  )
+
+#Perform PCA using only the 'average' column
+clean_wide |>
+  dplyr::select(expression, average) |>   # Select only the column named 'average'
+  prcomp(scale = TRUE)        # Run PCA with scaling (mean = 0, sd = 1; i.e. every variable contributes equally to the PCA) 
 ```
 
 **Plotting the data in PC coordinates.** To do this, we combine the PCA results (the PC coordinates) with the original dataset. This allows us to group the samples by categorical variables that were removed before performing PCA. We can do this using the `augment()` function from **broom**. The new columns containing the PCA coordinates are named `.fittedPC1`, `.fittedPC2`, and so on.
@@ -52,7 +97,7 @@ pca_fit |>
        subtitle = "PCA of gene expression across \nTissue, Condition, and Timepoint", 
          x = "Fitted PC1", y = "Fitted PC2", 
          color = "Timepoint") +
-  theme_half_open(12) + background_grid()
+  theme_minimal()
 
 ```
 
