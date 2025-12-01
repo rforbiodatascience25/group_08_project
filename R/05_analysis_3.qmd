@@ -2,7 +2,9 @@
 title: "Group08 - 05_analysis_2" 
 subtitle: "Volcano plot" 
 author: "Julija" 
-format: html
+format: 
+  html:
+    output-dir: results
 editor: visual
 ---
 
@@ -17,8 +19,8 @@ library(ggrepel)
 ## Load data
 
 ```{r}
-expr_with_meta <- readr::read_tsv("../_raw/data/expression_with_metadata.tsv")
-View(expr_with_meta)
+#loading data
+expr_with_meta <- readr::read_tsv("../_raw/data/03_dat_aug.tsv")
 ```
 
 ```{r}
@@ -56,6 +58,7 @@ roots_de <- comp_de(roots)
 ## Trial volcano plot for gene expression in shoots
 
 ```{r}
+# trying out the data on in the plot
 ggplot(data = shoots_de, 
        aes(x = log2FC, y = neglog10p)) +   
   geom_vline(
@@ -90,10 +93,12 @@ res_shoots <- shoots_de |>
 ## Updated volcano plot for gene expression in shoots
 
 ```{r}
+# calculating gene expression means to get the general regulation of genes
 gene_means <- expr_df |>     
   group_by(gene) |>    
   summarise(mean_expr = mean(expression))  
 
+# adding the means to the data and capping the values that are above 10 to make have less outliers
 res_shoots_clean <- res_shoots |>    
   left_join(gene_means, by="gene") |>
   mutate(
@@ -101,25 +106,37 @@ res_shoots_clean <- res_shoots |>
     ) |>    
   filter(mean_expr > 1)   
 
+# adding labels to top 5 upregulated genes
 top_up <- res_shoots_clean |>
   arrange(desc(log2FC)) |>
   slice_head(n = 5)
 
+# adding labels to top 5 downregulated genes
 top_down <- res_shoots_clean |>
   arrange(log2FC) |>
   slice_head(n = 5)
 
+# pooling the labels to make it easier to add to the plot
 top_labels <- bind_rows(top_up, top_down)
 
-ggplot(res_shoots_clean, 
+shoots_plot <- ggplot(res_shoots_clean, 
        aes(log2FC, neglog10p_capped)) +   
   geom_point(
     aes(color = sig,
         alpha = sig,
         size = sig)) +
-  geom_text_repel(data = top_labels,
+  geom_text_repel(data = top_labels,   # using ggrepel to avoiding label collision
   aes(label = gene),
-  size = 3) +
+  box.padding = 0.5,
+  point.padding = 0.3,
+  segment.color = "grey40",
+  segment.size = 0.5,
+  arrow = arrow(length = unit(0.01, "npc")), 
+  min.segment.length = 0.1, 
+  max.overlaps = 20,
+  size = 3,
+  force = 2
+  ) +
   scale_alpha_manual(values = c("Not significant" = 0.15,
                                 "Upregulated" = 0.8,
                                 "Downregulated" = 0.8)) + 
@@ -144,6 +161,8 @@ ggplot(res_shoots_clean,
     color = "Expression rate", 
     x = expression("log"[2]*" fold change"), 
     y = expression("-log"[10]*"p-value"))
+
+shoots_plot
 ```
 
 ## Volcano plot for gene expression in roots
@@ -165,6 +184,7 @@ gene_means <- expr_df |>
   group_by(gene) |>    
   summarise(mean_expr = mean(expression))  
 
+# adding the means to the data and capping the values that are above 10 to make have less outliers
 res_roots_clean <- res_roots |>    
   left_join(gene_means, by="gene") |>
   mutate(
@@ -172,25 +192,37 @@ res_roots_clean <- res_roots |>
     ) |>    
   filter(mean_expr > 1)   
 
+# adding labels to top 5 upregulated genes
 top_up <- res_roots_clean |>
   arrange(desc(log2FC)) |>
   slice_head(n = 5)
 
+# adding labels to top 5 downregulated genes
 top_down <- res_roots_clean |>
   arrange(log2FC) |>
   slice_head(n = 5)
 
+# pooling the labels to make it easier to add to the plot
 top_labels <- bind_rows(top_up, top_down)
 
-ggplot(res_roots_clean, 
+roots_plot <- ggplot(res_roots_clean, 
        aes(log2FC, neglog10p_capped)) +   
   geom_point(
     aes(color = sig,
         alpha = sig,
         size = sig)) +
-  geom_text_repel(data = top_labels,
+  geom_text_repel(data = top_labels,  # using ggrepel to avoiding label collision
   aes(label = gene),
-  size = 3) +
+  box.padding = 0.5,
+  point.padding = 0.3,
+  segment.color = "grey40",
+  segment.size = 0.5,
+  arrow = arrow(length = unit(0.01, "npc")),
+  min.segment.length = 0.1,  
+  max.overlaps = 20,
+  size = 3,
+  force = 2
+  ) +
   scale_alpha_manual(values = c("Not significant" = 0.15,
                                 "Upregulated" = 0.8,
                                 "Downregulated" = 0.8)) + 
@@ -215,4 +247,6 @@ ggplot(res_roots_clean,
     color = "Expression rate", 
     x = expression("log"[2]*" fold change"), 
     y = expression("-log"[10]*"p-value"))
+
+roots_plot
 ```
