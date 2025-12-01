@@ -255,6 +255,8 @@ There are 9980 entries to be plotted. That's too many for a Forest plot. Better 
 ## Try plotting p\<0.01 to see if there are less genes and plot is more interpretable
 
 ```{r}
+#| fig-height: 20 # can change this to like 600 to see all the genes <3
+#| fig-width: 10
 # instead of plotting q value <0.05, check 0.01:
 forest_plot_q_value <- data_estimates |>
   filter(q.value < 0.01 & is_significant == "yes") |> 
